@@ -13,6 +13,13 @@ from app.models.schemas import (
     HourlyDistribution,
     WeekdayDistribution,
     CategoryMetrics,
+    DeliveryPerformance,
+    DeliveryByRegion,
+    DeliveryTrend,
+    CustomerRFM,
+    ChurnRiskCustomer,
+    ProductByContext,
+    SalesHeatmapCell,
 )
 
 

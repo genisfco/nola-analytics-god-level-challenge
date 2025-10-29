@@ -304,3 +304,216 @@ class CategoriesResponse(BaseModel):
     total_categories: int
     period: dict
 
+
+# ============================================================================
+# DELIVERY ANALYTICS
+# ============================================================================
+
+class DeliveryPerformance(BaseModel):
+    """Delivery performance metrics"""
+    avg_delivery_time: float = Field(..., description="Average delivery time in seconds")
+    avg_production_time: float = Field(..., description="Average production time in seconds")
+    total_deliveries: int
+    on_time_deliveries: int = Field(..., description="Deliveries under 45 minutes")
+    on_time_rate: float = Field(..., description="On-time delivery rate (%)")
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "avg_delivery_time": 2340.5,
+                "avg_production_time": 1200.3,
+                "total_deliveries": 45230,
+                "on_time_deliveries": 38450,
+                "on_time_rate": 85.0
+            }
+        }
+
+
+class DeliveryByRegion(BaseModel):
+    """Delivery metrics by region"""
+    city: str
+    state: str
+    total_deliveries: int
+    avg_delivery_time: float
+    avg_production_time: float
+    on_time_rate: float
+    delivery_time_trend: float = Field(..., description="% change vs previous period")
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "city": "São Paulo",
+                "state": "SP",
+                "total_deliveries": 15230,
+                "avg_delivery_time": 2280.5,
+                "avg_production_time": 1150.3,
+                "on_time_rate": 87.5,
+                "delivery_time_trend": -5.2
+            }
+        }
+
+
+class DeliveryTrend(BaseModel):
+    """Delivery time trend over time"""
+    date: date
+    avg_delivery_time: float
+    avg_production_time: float
+    total_deliveries: int
+    on_time_rate: float
+
+
+# ============================================================================
+# CUSTOMER ANALYTICS (RFM)
+# ============================================================================
+
+class CustomerRFM(BaseModel):
+    """Customer RFM analysis"""
+    customer_id: int
+    customer_name: str
+    recency_days: int = Field(..., description="Days since last purchase")
+    frequency: int = Field(..., description="Total number of purchases")
+    monetary: float = Field(..., description="Total amount spent")
+    last_purchase_date: date
+    rfm_segment: str = Field(..., description="VIP, Regular, At Risk, Inactive")
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "customer_id": 1234,
+                "customer_name": "João Silva",
+                "recency_days": 45,
+                "frequency": 12,
+                "monetary": 2450.80,
+                "last_purchase_date": "2025-04-15",
+                "rfm_segment": "At Risk"
+            }
+        }
+
+
+class ChurnRiskCustomer(BaseModel):
+    """Customer at risk of churning"""
+    customer_id: int
+    customer_name: str
+    email: Optional[str]
+    phone_number: Optional[str]
+    total_purchases: int
+    total_spent: float
+    last_purchase_date: date
+    days_since_last_purchase: int
+    avg_days_between_purchases: float
+    favorite_channel: str
+    favorite_product: Optional[str]
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "customer_id": 5678,
+                "customer_name": "Maria Santos",
+                "email": "maria@example.com",
+                "phone_number": "+5511999999999",
+                "total_purchases": 8,
+                "total_spent": 1850.40,
+                "last_purchase_date": "2025-03-20",
+                "days_since_last_purchase": 42,
+                "avg_days_between_purchases": 15.5,
+                "favorite_channel": "iFood",
+                "favorite_product": "X-Bacon Duplo"
+            }
+        }
+
+
+# ============================================================================
+# CONTEXTUAL PRODUCT ANALYTICS
+# ============================================================================
+
+class ProductByContext(BaseModel):
+    """Product sales by specific context (weekday, hour, channel)"""
+    product_id: int
+    product_name: str
+    category: Optional[str]
+    times_sold: int
+    total_revenue: float
+    avg_price: float
+    context: dict = Field(..., description="Context filters applied")
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "product_id": 42,
+                "product_name": "X-Bacon Duplo",
+                "category": "Burgers",
+                "times_sold": 234,
+                "total_revenue": 8450.00,
+                "avg_price": 36.11,
+                "context": {
+                    "weekday": "Thursday",
+                    "hour_range": "19:00-23:00",
+                    "channel": "iFood"
+                }
+            }
+        }
+
+
+class SalesHeatmapCell(BaseModel):
+    """Sales heatmap cell (weekday x hour)"""
+    weekday: int = Field(..., ge=0, le=6)
+    weekday_name: str
+    hour: int = Field(..., ge=0, le=23)
+    total_sales: int
+    total_revenue: float
+    avg_ticket: float
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "weekday": 3,
+                "weekday_name": "Thursday",
+                "hour": 20,
+                "total_sales": 450,
+                "total_revenue": 16250.00,
+                "avg_ticket": 36.11
+            }
+        }
+
+
+# ============================================================================
+# RESPONSE WRAPPERS (NEW)
+# ============================================================================
+
+class DeliveryPerformanceResponse(BaseModel):
+    """Delivery performance response"""
+    overall: DeliveryPerformance
+    by_region: list[DeliveryByRegion]
+    trend: list[DeliveryTrend]
+    period: dict
+
+
+class CustomerRFMResponse(BaseModel):
+    """Customer RFM analysis response"""
+    customers: list[CustomerRFM]
+    total_customers: int
+    segments: dict = Field(..., description="Count by segment")
+    period: dict
+
+
+class ChurnRiskResponse(BaseModel):
+    """Churn risk customers response"""
+    customers: list[ChurnRiskCustomer]
+    total_at_risk: int
+    criteria: dict
+    period: dict
+
+
+class ProductByContextResponse(BaseModel):
+    """Products by context response"""
+    products: list[ProductByContext]
+    total_products: int
+    context: dict
+    period: dict
+
+
+class SalesHeatmapResponse(BaseModel):
+    """Sales heatmap response"""
+    heatmap: list[SalesHeatmapCell]
+    period: dict
+
