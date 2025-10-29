@@ -39,27 +39,6 @@ export function Dashboard() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="bg-card border-b border-border shadow-sm">
-        <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-foreground">
-                🍔 Analytics Dashboard
-              </h1>
-              <p className="text-sm text-muted-foreground mt-1">
-                Nola God Level Challenge • 2025
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-muted-foreground">
-                {dateRange.startDate} até {dateRange.endDate}
-              </span>
-            </div>
-          </div>
-        </div>
-      </header>
-
       <div className="container mx-auto px-6 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
           {/* Filtros */}
