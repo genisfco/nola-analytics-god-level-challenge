@@ -4,24 +4,47 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    /* Nola Brand Colors */
+    --nola-tomate: 1 71% 69%;        /* #fd6263 rgb(253,98,99) */
+    --nola-brown: 355 71% 32%;       /* #8b1721 rgb(139,23,33) */
+    --nola-whitesmoke: 0 0% 93%;     /* #ececec rgb(236,236,236) */
+    --nola-darkgray: 214 35% 17%;    /* #1c293a rgb(28,41,58) */
+    --nola-white: 0 0% 100%;         /* #ffffff rgb(255,255,255) */
+    
+    /* Semantic Color Mapping */
+    --background: var(--nola-whitesmoke);
+    --foreground: var(--nola-darkgray);
+    
+    --primary: var(--nola-tomate);
+    --primary-foreground: var(--nola-white);
+    
+    --secondary: var(--nola-brown);
+    --secondary-foreground: var(--nola-white);
+    
+    --card: var(--nola-white);
+    --card-foreground: var(--nola-darkgray);
+    
+    --muted: 0 0% 96%;
+    --muted-foreground: 214 35% 40%;
+    
+    --accent: var(--nola-tomate);
+    --accent-foreground: var(--nola-white);
+    
+    --destructive: 0 84% 60%;
+    --destructive-foreground: var(--nola-white);
+    
+    --border: 0 0% 90%;
+    --input: var(--nola-white);
+    --ring: var(--nola-tomate);
+    
     --radius: 0.5rem;
+    
+    /* Chart Colors (for data visualization) */
+    --chart-1: var(--nola-tomate);
+    --chart-2: var(--nola-brown);
+    --chart-3: 210 70% 50%;
+    --chart-4: 45 93% 58%;
+    --chart-5: 280 65% 60%;
   }
 }
 
