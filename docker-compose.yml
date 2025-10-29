@@ -1,9 +1,7 @@
-version: '3.8'
-
 services:
   postgres:
-    image: postgres:15
-    container_name: godlevel-db
+    image: postgres:15-alpine
+    container_name: analytics-db
     environment:
       POSTGRES_DB: challenge_db
       POSTGRES_USER: challenge
@@ -12,48 +10,90 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./database-schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U challenge -d challenge_db"]
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - analytics-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: analytics-cache
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - analytics-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: analytics-backend
+    environment:
+      DATABASE_URL: postgresql://challenge:challenge_2024@postgres:5432/challenge_db
+      REDIS_URL: redis://redis:6379/0
+      DEBUG: "false"
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend/app:/app/app
+    networks:
+      - analytics-network
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   data-generator:
     build:
-      context: .
+      context: ./database
       dockerfile: Dockerfile
-    container_name: godlevel-data-gen
+    container_name: analytics-data-gen
     depends_on:
       postgres:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://challenge:challenge_2024@postgres:5432/challenge_db
-    command: >
-      sh -c "
-        echo 'Waiting for database to be ready...' &&
-        sleep 5 &&
-        echo 'Generating challenge data...' &&
-        python generate_data.py --db-url postgresql://challenge:challenge_2024@postgres:5432/challenge_db
-      "
+    networks:
+      - analytics-network
     profiles:
       - tools
 
   pgadmin:
     image: dpage/pgadmin4:latest
-    container_name: godlevel-pgadmin
+    container_name: analytics-pgadmin
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@godlevel.com
+      PGADMIN_DEFAULT_EMAIL: admin@analytics.com
       PGADMIN_DEFAULT_PASSWORD: admin
       PGADMIN_CONFIG_SERVER_MODE: 'False'
     ports:
       - "5050:80"
     depends_on:
       - postgres
+    networks:
+      - analytics-network
     profiles:
       - tools
 
 volumes:
   postgres_data:
     driver: local
+  redis_data:
+    driver: local
 
+networks:
+  analytics-network:
+    driver: bridge
