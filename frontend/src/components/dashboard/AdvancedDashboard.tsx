@@ -62,6 +62,8 @@ export function AdvancedDashboard() {
           <DeliveryAnalysis
             startDate={dateRange.startDate}
             endDate={dateRange.endDate}
+            contextFilters={contextFilters}
+            storeIds={dateRange.storeIds}
           />
         </div>
 

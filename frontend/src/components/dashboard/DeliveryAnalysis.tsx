@@ -4,10 +4,18 @@ import { useApi } from '@/hooks/useApi'
 import { useBrand } from '@/contexts/BrandContext'
 import { DeliveryPerformance, DeliveryByRegion } from '@/lib/api'
 import { formatNumber } from '@/lib/utils'
+import { ContextFilters } from '../filters/AdvancedFilters'
+
+interface DeliveryPerformanceResponse {
+  overall: DeliveryPerformance
+  by_region?: DeliveryByRegion[]
+}
 
 interface DeliveryAnalysisProps {
   startDate: string
   endDate: string
+  contextFilters?: ContextFilters
+  storeIds?: number[]
 }
 
 function formatTime(seconds: number): string {
@@ -16,15 +24,20 @@ function formatTime(seconds: number): string {
   return `${minutes}m ${secs}s`
 }
 
-export function DeliveryAnalysis({ startDate, endDate }: DeliveryAnalysisProps) {
+export function DeliveryAnalysis({ startDate, endDate, contextFilters, storeIds }: DeliveryAnalysisProps) {
   const { fetchApi } = useApi()
   const { brandId } = useBrand()
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['delivery-performance', startDate, endDate, brandId],
-    queryFn: () => fetchApi('/delivery/performance', {
+  const { data, isLoading } = useQuery<DeliveryPerformanceResponse>({
+    queryKey: ['delivery-performance', startDate, endDate, contextFilters, storeIds, brandId],
+    queryFn: () => fetchApi<DeliveryPerformanceResponse>('/delivery/performance', {
       start_date: startDate,
       end_date: endDate,
+      weekday: contextFilters?.weekday,
+      hour_start: contextFilters?.hourStart,
+      hour_end: contextFilters?.hourEnd,
+      channel_id: contextFilters?.channelId,
+      store_ids: storeIds && storeIds.length > 0 ? storeIds : undefined,
     }),
     enabled: !!brandId,
   })
@@ -42,15 +55,49 @@ export function DeliveryAnalysis({ startDate, endDate }: DeliveryAnalysisProps) 
   const overall: DeliveryPerformance = data.overall
   const regions: DeliveryByRegion[] = data.by_region || []
 
+  // Build filter labels
+  const weekdayNames = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo']
+  const channelNames: Record<number, string> = {
+    1: 'Presencial',
+    2: 'iFood',
+    3: 'Rappi',
+    4: 'Uber Eats',
+    5: 'WhatsApp',
+    6: 'App Próprio',
+  }
+
+  const contextLabel = []
+  if (contextFilters?.weekday !== undefined) {
+    contextLabel.push(weekdayNames[contextFilters.weekday])
+  }
+  if (contextFilters?.hourStart !== undefined && contextFilters?.hourEnd !== undefined) {
+    contextLabel.push(`${contextFilters.hourStart}h-${contextFilters.hourEnd}h`)
+  }
+  if (contextFilters?.channelId !== undefined) {
+    contextLabel.push(channelNames[contextFilters.channelId])
+  }
+
+  const storeFilterLabel = storeIds && storeIds.length > 0 
+    ? `${storeIds.length} loja${storeIds.length > 1 ? 's' : ''}`
+    : null
+
   return (
     <div className="space-y-6">
       {/* Overall Metrics */}
       <div className="bg-card rounded-lg shadow-sm border border-border p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <Truck className="w-5 h-5 text-primary" />
-          <h3 className="text-lg font-semibold text-card-foreground">
-            Performance de Entrega
-          </h3>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Truck className="w-5 h-5 text-primary" />
+            <h3 className="text-lg font-semibold text-card-foreground">
+              Performance de Entrega
+              {contextLabel.length > 0 && <span className="text-muted-foreground font-normal"> - {contextLabel.join(' • ')}</span>}
+            </h3>
+          </div>
+          {storeFilterLabel && (
+            <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-md font-medium">
+              {storeFilterLabel}
+            </span>
+          )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
