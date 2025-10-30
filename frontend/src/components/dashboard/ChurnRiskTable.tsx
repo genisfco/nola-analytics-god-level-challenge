@@ -26,7 +26,7 @@ interface ChurnRiskTableProps {
 export function ChurnRiskTable({ 
   minPurchases = 3, 
   daysInactive = 30, 
-  limit = 50 
+  limit = 30 
 }: ChurnRiskTableProps) {
   const { fetchApi } = useApi()
   const { brandId } = useBrand()

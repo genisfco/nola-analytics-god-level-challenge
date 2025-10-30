@@ -29,7 +29,7 @@ export function StoreFilter({ onApply, initialStores = [] }: StoreFilterProps) {
       setLoading(true)
       try {
         const response = await fetch(
-          `http://localhost:8000/api/v1/analytics/stores/list?brand_id=${brandId}`
+          `/api/v1/analytics/stores/list?brand_id=${brandId}`
         )
         const data = await response.json()
         setStoreOptions(data.stores)

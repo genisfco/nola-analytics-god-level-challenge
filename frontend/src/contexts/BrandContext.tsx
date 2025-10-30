@@ -32,7 +32,7 @@ export function BrandProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const fetchBrands = async () => {
       try {
-        const response = await fetch('http://localhost:8000/api/v1/analytics/brands/list')
+        const response = await fetch('/api/v1/analytics/brands/list')
         const data = await response.json()
         setBrands(data.brands)
         

@@ -1,6 +1,6 @@
 import { useBrand } from '../contexts/BrandContext'
 
-const API_BASE_URL = 'http://localhost:8000/api/v1/analytics'
+const API_BASE_URL = '/api/v1/analytics'
 
 interface UseApiReturn {
   buildUrl: (endpoint: string, params?: Record<string, any>) => string
@@ -21,11 +21,11 @@ export function useApi(): UseApiReturn {
    * Constrói a URL com os parâmetros, incluindo automaticamente o brand_id
    */
   const buildUrl = (endpoint: string, params?: Record<string, any>): string => {
-    const url = new URL(`${API_BASE_URL}${endpoint}`)
+    const searchParams = new URLSearchParams()
     
     // Adiciona brand_id automaticamente se existir
     if (brandId) {
-      url.searchParams.append('brand_id', brandId.toString())
+      searchParams.append('brand_id', brandId.toString())
     }
     
     // Adiciona outros parâmetros
@@ -35,16 +35,17 @@ export function useApi(): UseApiReturn {
           // Se for array, converte para string separada por vírgula
           if (Array.isArray(value)) {
             if (value.length > 0) {
-              url.searchParams.append(key, value.join(','))
+              searchParams.append(key, value.join(','))
             }
           } else {
-            url.searchParams.append(key, String(value))
+            searchParams.append(key, String(value))
           }
         }
       })
     }
     
-    return url.toString()
+    const queryString = searchParams.toString()
+    return `${API_BASE_URL}${endpoint}${queryString ? '?' + queryString : ''}`
   }
 
   /**
