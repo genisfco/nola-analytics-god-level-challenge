@@ -8,7 +8,9 @@ import { DateFilter } from '../filters/DateFilter'
 import { StoreFilter } from '../filters/StoreFilter'
 import { SalesTrendChart } from '../charts/SalesTrendChart'
 import { ChannelChart } from '../charts/ChannelChart'
+import { InsightsPanel } from '../insights'
 import { DollarSign, ShoppingCart, Users, TrendingUp, XCircle, CheckCircle } from 'lucide-react'
+import type { InsightsResponse } from '@/types/insights'
 
 export function Dashboard() {
   const [dateRange, setDateRange] = useState(getDefaultDateRange())
@@ -57,6 +59,18 @@ export function Dashboard() {
       channel_ids: dateRange.channelIds,
     }),
     enabled: !!brandId,
+  })
+
+  const { data: insights, isLoading: insightsLoading } = useQuery<InsightsResponse>({
+    queryKey: ['insights', dateRange, brandId],
+    queryFn: () => fetchApi('/insights/automatic', {
+      start_date: dateRange.startDate,
+      end_date: dateRange.endDate,
+      store_ids: dateRange.storeIds,
+      limit: 5
+    }),
+    enabled: !!brandId,
+    refetchInterval: 5 * 60 * 1000 // Atualizar a cada 5 minutos
   })
 
   const handleDateChange = (startDate: string, endDate: string) => {
@@ -164,7 +178,7 @@ export function Dashboard() {
 
         {/* Top Products Table */}
         {products?.products && products.products.length > 0 && (
-          <div className="bg-card rounded-lg shadow-sm border border-border p-6">
+          <div className="bg-card rounded-lg shadow-sm border border-border p-6 mb-8">
             <h3 className="text-lg font-semibold text-card-foreground mb-4">
               🏆 Top 5 Produtos Mais Vendidos
             </h3>
@@ -217,6 +231,13 @@ export function Dashboard() {
             </div>
           </div>
         )}
+
+        {/* Insights Panel - Final do Dashboard */}
+        <InsightsPanel 
+          insights={insights?.insights}
+          isLoading={insightsLoading}
+          lastUpdate={insights?.generated_at ? new Date(insights.generated_at) : undefined}
+        />
       </div>
     </div>
   )

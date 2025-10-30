@@ -592,3 +592,131 @@ class SalesHeatmapResponse(BaseModel):
     heatmap: list[SalesHeatmapCell]
     period: dict
 
+
+# ============================================================================
+# INSIGHTS SCHEMAS (NEW)
+# ============================================================================
+
+class InsightImpact(BaseModel):
+    """Impact measurement for an insight"""
+    metric: str = Field(..., description="Metric type: revenue_loss, revenue_opportunity, etc.")
+    value: float = Field(..., description="Financial impact value in BRL")
+    currency: str = Field(default="BRL", description="Currency code")
+    period: str = Field(..., description="Period: daily, weekly, monthly, yearly")
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "metric": "revenue_loss",
+                "value": 12400.00,
+                "currency": "BRL",
+                "period": "monthly"
+            }
+        }
+
+
+class InsightContext(BaseModel):
+    """Context information about where/when the insight applies"""
+    affected_stores: Optional[list[int]] = Field(None, description="Store IDs affected")
+    affected_channels: Optional[list[int]] = Field(None, description="Channel IDs affected")
+    affected_days: Optional[list[str]] = Field(None, description="Days of week affected")
+    affected_hours: Optional[list[int]] = Field(None, description="Hours affected")
+    affected_products: Optional[list[int]] = Field(None, description="Product IDs affected")
+    data_points: int = Field(default=0, description="Number of data points analyzed")
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "affected_stores": [1, 2],
+                "affected_channels": [3],
+                "affected_days": ["friday", "saturday"],
+                "affected_hours": [19, 20, 21],
+                "data_points": 340
+            }
+        }
+
+
+class InsightRecommendation(BaseModel):
+    """Recommended action for the insight"""
+    action: str = Field(..., description="Clear action to take")
+    estimated_roi: Optional[float] = Field(None, description="Expected return on investment")
+    difficulty: str = Field(default="medium", description="Implementation difficulty: easy, medium, hard")
+    link_to: Optional[str] = Field(None, description="Link to relevant dashboard section")
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "action": "Adicionar 2 entregadores nos fins de semana",
+                "estimated_roi": 8500.00,
+                "difficulty": "medium",
+                "link_to": "/advanced?tab=delivery"
+            }
+        }
+
+
+class Insight(BaseModel):
+    """Single insight with all details"""
+    id: str = Field(..., description="Unique insight identifier")
+    type: str = Field(..., description="Insight type: performance_issue, opportunity, churn_risk, etc.")
+    priority: str = Field(..., description="Priority level: critical, attention, positive")
+    title: str = Field(..., description="Clear, actionable title")
+    description: str = Field(..., description="Detailed description of the insight")
+    impact: InsightImpact = Field(..., description="Financial or business impact")
+    context: InsightContext = Field(..., description="Context information")
+    recommendation: InsightRecommendation = Field(..., description="Recommended action")
+    detected_at: datetime = Field(..., description="When this insight was detected")
+    confidence_score: float = Field(default=0.75, description="Confidence in the insight (0-1)")
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "id": "delivery_cancellation_spike_001",
+                "type": "performance_issue",
+                "priority": "critical",
+                "title": "Alto índice de cancelamentos no delivery",
+                "description": "340 pedidos cancelados após tempo médio de espera de 45min",
+                "impact": {
+                    "metric": "revenue_loss",
+                    "value": 12400.00,
+                    "currency": "BRL",
+                    "period": "monthly"
+                },
+                "context": {
+                    "affected_stores": [1, 2],
+                    "affected_channels": [3],
+                    "affected_days": ["friday", "saturday"],
+                    "affected_hours": [19, 20, 21],
+                    "data_points": 340
+                },
+                "recommendation": {
+                    "action": "Adicionar 2 entregadores nos fins de semana no horário de pico",
+                    "estimated_roi": 8500.00,
+                    "difficulty": "medium",
+                    "link_to": "/advanced?tab=delivery"
+                },
+                "detected_at": "2025-10-30T10:30:00Z",
+                "confidence_score": 0.85
+            }
+        }
+
+
+class InsightsResponse(BaseModel):
+    """Response with multiple insights"""
+    insights: list[Insight] = Field(..., description="List of detected insights")
+    total: int = Field(..., description="Total number of insights found")
+    generated_at: datetime = Field(..., description="When insights were generated")
+    period: dict = Field(..., description="Analysis period")
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "insights": [],
+                "total": 3,
+                "generated_at": "2025-10-30T10:30:00Z",
+                "period": {
+                    "start_date": "2025-05-01",
+                    "end_date": "2025-05-31",
+                    "days": 31
+                }
+            }
+        }

@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 from app.core.config import settings
 from app.core.database import db
 from app.core.cache import cache
-from app.api.routes import analytics, analytics_advanced
+from app.api.routes import analytics, analytics_advanced, insights
 # from app.api.routes import sales, products
 
 
@@ -70,6 +70,7 @@ async def health_check():
 # Include routers
 app.include_router(analytics.router, prefix=f"{settings.API_V1_PREFIX}/analytics", tags=["Analytics"])
 app.include_router(analytics_advanced.router, prefix=f"{settings.API_V1_PREFIX}/analytics", tags=["Analytics Advanced"])
+app.include_router(insights.router, prefix=f"{settings.API_V1_PREFIX}/analytics/insights", tags=["Insights"])
 # app.include_router(sales.router, prefix=f"{settings.API_V1_PREFIX}/sales", tags=["Sales"])
 # app.include_router(products.router, prefix=f"{settings.API_V1_PREFIX}/products", tags=["Products"])
 
