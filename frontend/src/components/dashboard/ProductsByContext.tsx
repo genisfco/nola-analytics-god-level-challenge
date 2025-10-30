@@ -20,9 +20,10 @@ interface ProductsByContextProps {
   startDate: string
   endDate: string
   contextFilters: ContextFilters
+  storeIds?: number[]
 }
 
-export function ProductsByContext({ startDate, endDate, contextFilters }: ProductsByContextProps) {
+export function ProductsByContext({ startDate, endDate, contextFilters, storeIds }: ProductsByContextProps) {
   const { fetchApi } = useApi()
   const { brandId } = useBrand()
 
@@ -32,7 +33,7 @@ export function ProductsByContext({ startDate, endDate, contextFilters }: Produc
     contextFilters.channelId !== undefined
 
   const { data, isLoading } = useQuery<ProductsByContextResponse>({
-    queryKey: ['products-context', startDate, endDate, contextFilters, brandId],
+    queryKey: ['products-context', startDate, endDate, contextFilters, storeIds, brandId],
     queryFn: () =>
       fetchApi<ProductsByContextResponse>('/products/by-context', {
         start_date: startDate,
@@ -41,7 +42,8 @@ export function ProductsByContext({ startDate, endDate, contextFilters }: Produc
         hour_start: contextFilters.hourStart,
         hour_end: contextFilters.hourEnd,
         channel_id: contextFilters.channelId,
-        limit: 10,
+        store_ids: storeIds && storeIds.length > 0 ? storeIds : undefined,
+        limit: 5,
       }),
     enabled: hasContextFilters && !!brandId,
   })
@@ -52,7 +54,7 @@ export function ProductsByContext({ startDate, endDate, contextFilters }: Produc
         <div className="flex items-center gap-2 mb-4">
           <Package className="w-5 h-5 text-primary" />
           <h3 className="text-lg font-semibold text-card-foreground">
-            Produtos mais vendidos
+            Produtos mais vendidos no período selecionado
           </h3>
         </div>
         <div className="text-center py-8">
@@ -93,6 +95,14 @@ export function ProductsByContext({ startDate, endDate, contextFilters }: Produc
 
   const products: ProductByContext[] = data.products
   const weekdayNames = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo']
+  const channelNames: Record<number, string> = {
+    1: 'Presencial',
+    2: 'iFood',
+    3: 'Rappi',
+    4: 'Uber Eats',
+    5: 'WhatsApp',
+    6: 'App Próprio',
+  }
   
   const contextLabel = []
   if (contextFilters.weekday !== undefined) {
@@ -101,6 +111,13 @@ export function ProductsByContext({ startDate, endDate, contextFilters }: Produc
   if (contextFilters.hourStart !== undefined && contextFilters.hourEnd !== undefined) {
     contextLabel.push(`${contextFilters.hourStart}h-${contextFilters.hourEnd}h`)
   }
+  if (contextFilters.channelId !== undefined) {
+    contextLabel.push(channelNames[contextFilters.channelId])
+  }
+
+  const storeFilterLabel = storeIds && storeIds.length > 0 
+    ? `${storeIds.length} loja${storeIds.length > 1 ? 's' : ''}`
+    : null
 
   return (
     <div className="bg-card rounded-lg shadow-sm border border-border p-6">
@@ -111,9 +128,16 @@ export function ProductsByContext({ startDate, endDate, contextFilters }: Produc
             Top Produtos {contextLabel.length > 0 && `- ${contextLabel.join(' • ')}`}
           </h3>
         </div>
-        <span className="text-sm text-muted-foreground">
-          {products.length} produtos
-        </span>
+        <div className="flex items-center gap-2">
+          {storeFilterLabel && (
+            <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-md font-medium">
+              {storeFilterLabel}
+            </span>
+          )}
+          <span className="text-sm text-muted-foreground">
+            {products.length} produtos
+          </span>
+        </div>
       </div>
 
       <div className="overflow-x-auto">

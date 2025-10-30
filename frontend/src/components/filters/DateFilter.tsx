@@ -23,7 +23,7 @@ export function DateFilter({ startDate, endDate, onChange }: DateFilterProps) {
   ]
 
   const applyQuickRange = (days: number) => {
-    const end = new Date('2025-05-31')
+    const end = new Date()
     const start = new Date(end)
     start.setDate(start.getDate() - days)
     

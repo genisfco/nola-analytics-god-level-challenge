@@ -52,6 +52,7 @@ export function AdvancedDashboard() {
             startDate={dateRange.startDate}
             endDate={dateRange.endDate}
             contextFilters={contextFilters}
+            storeIds={dateRange.storeIds}
           />
         </div>
 
