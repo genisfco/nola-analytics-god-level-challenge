@@ -115,6 +115,7 @@ async def get_churn_risk_customers(
     min_purchases: int = Query(3, ge=1, description="Minimum number of purchases"),
     days_inactive: int = Query(30, ge=1, description="Days since last purchase"),
     brand_id: Optional[int] = Query(None, description="Brand ID to filter by owner"),
+    store_ids: Optional[str] = Query(None, description="Comma-separated store IDs"),
     limit: int = Query(100, ge=1, le=500, description="Maximum number of customers"),
     engine: AdvancedAnalyticsEngine = Depends(get_advanced_engine)
 ):
@@ -127,11 +128,18 @@ async def get_churn_risk_customers(
     - Made X or more purchases
     - Haven't returned in Y days
     - Their favorite channel and product
+    - Can be filtered by specific stores
     """
+    # Parse store_ids from comma-separated string
+    store_id_list = None
+    if store_ids:
+        store_id_list = [int(sid.strip()) for sid in store_ids.split(",") if sid.strip()]
+    
     customers = await engine.get_churn_risk_customers(
         min_purchases=min_purchases,
         days_inactive=days_inactive,
         brand_id=brand_id,
+        store_ids=store_id_list,
         limit=limit
     )
     

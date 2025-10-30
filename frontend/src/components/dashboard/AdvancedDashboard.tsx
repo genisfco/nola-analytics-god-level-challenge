@@ -69,7 +69,11 @@ export function AdvancedDashboard() {
 
         {/* Análise de Clientes em Risco */}
         <div className="mb-8">          
-          <ChurnRiskTable minPurchases={3} daysInactive={30}/>
+          <ChurnRiskTable 
+            minPurchases={3} 
+            daysInactive={30}
+            storeIds={dateRange.storeIds}
+          />
         </div>
       </div>
     </div>

@@ -21,22 +21,25 @@ interface ChurnRiskTableProps {
   minPurchases?: number
   daysInactive?: number
   limit?: number
+  storeIds?: number[]
 }
 
 export function ChurnRiskTable({ 
   minPurchases = 3, 
   daysInactive = 30, 
-  limit = 10 
+  limit = 10,
+  storeIds
 }: ChurnRiskTableProps) {
   const { fetchApi } = useApi()
   const { brandId } = useBrand()
 
   const { data, isLoading } = useQuery<ChurnRiskResponse>({
-    queryKey: ['churn-risk', minPurchases, daysInactive, limit, brandId],
+    queryKey: ['churn-risk', minPurchases, daysInactive, limit, storeIds, brandId],
     queryFn: () => fetchApi<ChurnRiskResponse>('/customers/churn-risk', {
       min_purchases: minPurchases,
       days_inactive: daysInactive,
       limit,
+      store_ids: storeIds && storeIds.length > 0 ? storeIds : undefined,
     }),
     enabled: !!brandId,
   })
@@ -70,6 +73,10 @@ export function ChurnRiskTable({
 
   const customers: ChurnRiskCustomer[] = data.customers
 
+  const storeFilterLabel = storeIds && storeIds.length > 0 
+    ? `${storeIds.length} loja${storeIds.length > 1 ? 's' : ''}`
+    : null
+
   return (
     <div className="bg-card rounded-lg shadow-sm border border-border p-6">
       <div className="flex items-center justify-between mb-4">
@@ -78,6 +85,11 @@ export function ChurnRiskTable({
           <h3 className="text-lg font-semibold text-card-foreground">
             Clientes em Risco
           </h3>
+          {storeFilterLabel && (
+            <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-md font-medium">
+              {storeFilterLabel}
+            </span>
+          )}
         </div>
         <div className="text-right">
           <p className="text-2xl font-bold text-red-600">{customers.length}</p>

@@ -250,12 +250,31 @@ class AdvancedAnalyticsEngine:
         min_purchases: int = 3,
         days_inactive: int = 30,
         brand_id: Optional[int] = None,
+        store_ids: Optional[list[int]] = None,
         limit: int = 100
     ) -> list[ChurnRiskCustomer]:
         """
         Get customers at risk of churning (bought X+ times but haven't returned in Y days)
+        Can be filtered by brand and/or specific stores
         """
-        brand_filter = "AND st.brand_id = $4" if brand_id else ""
+        # Build filter conditions
+        filters = []
+        param_counter = 4  # Start after min_purchases, days_inactive, limit
+        params_dict = {}
+        
+        if brand_id:
+            filters.append(f"st.brand_id = ${param_counter}")
+            params_dict[param_counter] = brand_id
+            param_counter += 1
+        
+        if store_ids:
+            store_placeholders = ", ".join([f"${param_counter + i}" for i in range(len(store_ids))])
+            filters.append(f"st.id IN ({store_placeholders})")
+            for i, store_id in enumerate(store_ids):
+                params_dict[param_counter + i] = store_id
+            param_counter += len(store_ids)
+        
+        where_filter = "AND " + " AND ".join(filters) if filters else ""
         
         query = f"""
         WITH purchase_intervals AS (
@@ -267,7 +286,7 @@ class AdvancedAnalyticsEngine:
             INNER JOIN stores st ON s.store_id = st.id
             WHERE s.sale_status_desc = 'COMPLETED'
                 AND s.customer_id IS NOT NULL
-                {brand_filter}
+                {where_filter}
         ),
         customer_stats AS (
             SELECT 
@@ -289,7 +308,7 @@ class AdvancedAnalyticsEngine:
             INNER JOIN stores st ON s.store_id = st.id
             WHERE s.sale_status_desc = 'COMPLETED'
                 AND c.id IS NOT NULL
-                {brand_filter}
+                {where_filter}
             GROUP BY c.id, c.customer_name, c.email, c.phone_number
             HAVING COUNT(*) >= $1
                 AND CURRENT_DATE - MAX(s.created_at::date) >= $2
@@ -302,7 +321,7 @@ class AdvancedAnalyticsEngine:
             INNER JOIN stores st ON s.store_id = st.id
             JOIN channels ch ON ch.id = s.channel_id
             WHERE s.sale_status_desc = 'COMPLETED'
-                {brand_filter}
+                {where_filter}
             GROUP BY s.customer_id, ch.name
             ORDER BY s.customer_id, COUNT(*) DESC
         ),
@@ -315,7 +334,7 @@ class AdvancedAnalyticsEngine:
             JOIN product_sales ps ON ps.sale_id = s.id
             JOIN products p ON p.id = ps.product_id
             WHERE s.sale_status_desc = 'COMPLETED'
-                {brand_filter}
+                {where_filter}
             GROUP BY s.customer_id, p.name
             ORDER BY s.customer_id, COUNT(*) DESC
         )
@@ -330,9 +349,12 @@ class AdvancedAnalyticsEngine:
         LIMIT $3
         """
         
+        # Build params list in order
         params = [min_purchases, days_inactive, limit]
-        if brand_id:
-            params.append(brand_id)
+        
+        # Add brand_id and store_ids in the order they appear in params_dict
+        for param_num in sorted(params_dict.keys()):
+            params.append(params_dict[param_num])
         
         results = await self.db.fetch_all(query, *params)
         
