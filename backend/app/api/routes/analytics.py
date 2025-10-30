@@ -16,6 +16,10 @@ from app.models.schemas import (
     HourlyDistributionResponse,
     WeekdayDistributionResponse,
     CategoriesResponse,
+    BrandsListResponse,
+    StoresListResponse,
+    Brand,
+    Store,
 )
 
 router = APIRouter()
@@ -27,6 +31,81 @@ def get_analytics_engine(db: Database = Depends(get_db)) -> AnalyticsEngine:
 
 
 # ============================================================================
+# BRANDS & STORES ENDPOINTS
+# ============================================================================
+
+@router.get("/brands/list", response_model=BrandsListResponse)
+async def get_brands_list(db: Database = Depends(get_db)):
+    """
+    Get list of all brands (owners/proprietários)
+    
+    Returns:
+    - List of brands with id and name
+    - Total count
+    
+    This endpoint is used for brand selection in the frontend
+    """
+    query = """
+        SELECT id, name 
+        FROM brands 
+        ORDER BY name
+    """
+    
+    result = await db.fetch_all(query)
+    
+    brands = [Brand(id=row["id"], name=row["name"]) for row in result]
+    
+    return BrandsListResponse(
+        brands=brands,
+        total=len(brands)
+    )
+
+
+@router.get("/stores/list", response_model=StoresListResponse)
+async def get_stores_list(
+    brand_id: int = Query(..., description="Brand ID to filter stores"),
+    db: Database = Depends(get_db)
+):
+    """
+    Get list of stores for a specific brand
+    
+    Parameters:
+    - brand_id: Filter stores by brand (owner)
+    
+    Returns:
+    - List of stores with basic information
+    - Only active stores are returned
+    
+    This endpoint is used for store filter selection in the frontend
+    """
+    query = """
+        SELECT id, name, city, state, is_active
+        FROM stores
+        WHERE brand_id = $1 AND is_active = true
+        ORDER BY name
+    """
+    
+    result = await db.fetch_all(query, brand_id)
+    
+    stores = [
+        Store(
+            id=row["id"],
+            name=row["name"],
+            city=row["city"],
+            state=row["state"],
+            is_active=row["is_active"]
+        )
+        for row in result
+    ]
+    
+    return StoresListResponse(
+        stores=stores,
+        total=len(stores),
+        brand_id=brand_id
+    )
+
+
+# ============================================================================
 # OVERVIEW ENDPOINT
 # ============================================================================
 
@@ -34,6 +113,7 @@ def get_analytics_engine(db: Database = Depends(get_db)) -> AnalyticsEngine:
 async def get_overview(
     start_date: date = Query(..., description="Start date (YYYY-MM-DD)"),
     end_date: date = Query(..., description="End date (YYYY-MM-DD)"),
+    brand_id: Optional[int] = Query(None, description="Brand ID to filter by owner"),
     store_ids: Optional[str] = Query(None, description="Comma-separated store IDs"),
     channel_ids: Optional[str] = Query(None, description="Comma-separated channel IDs"),
     engine: AnalyticsEngine = Depends(get_analytics_engine)
@@ -56,6 +136,7 @@ async def get_overview(
     metrics = await engine.get_overview_metrics(
         start_date=start_date,
         end_date=end_date,
+        brand_id=brand_id,
         store_ids=store_ids_list,
         channel_ids=channel_ids_list
     )
@@ -81,6 +162,7 @@ async def get_top_products(
     start_date: date = Query(..., description="Start date (YYYY-MM-DD)"),
     end_date: date = Query(..., description="End date (YYYY-MM-DD)"),
     limit: int = Query(20, ge=1, le=100, description="Number of products to return"),
+    brand_id: Optional[int] = Query(None, description="Brand ID to filter by owner"),
     store_ids: Optional[str] = Query(None, description="Comma-separated store IDs"),
     channel_ids: Optional[str] = Query(None, description="Comma-separated channel IDs"),
     engine: AnalyticsEngine = Depends(get_analytics_engine)
@@ -101,6 +183,7 @@ async def get_top_products(
         start_date=start_date,
         end_date=end_date,
         limit=limit,
+        brand_id=brand_id,
         store_ids=store_ids_list,
         channel_ids=channel_ids_list
     )
@@ -123,6 +206,7 @@ async def get_top_products(
 async def get_channel_metrics(
     start_date: date = Query(..., description="Start date (YYYY-MM-DD)"),
     end_date: date = Query(..., description="End date (YYYY-MM-DD)"),
+    brand_id: Optional[int] = Query(None, description="Brand ID to filter by owner"),
     store_ids: Optional[str] = Query(None, description="Comma-separated store IDs"),
     engine: AnalyticsEngine = Depends(get_analytics_engine)
 ):
@@ -140,6 +224,7 @@ async def get_channel_metrics(
     channels = await engine.get_channel_metrics(
         start_date=start_date,
         end_date=end_date,
+        brand_id=brand_id,
         store_ids=store_ids_list
     )
     
@@ -161,6 +246,7 @@ async def get_channel_metrics(
 async def get_store_metrics(
     start_date: date = Query(..., description="Start date (YYYY-MM-DD)"),
     end_date: date = Query(..., description="End date (YYYY-MM-DD)"),
+    brand_id: Optional[int] = Query(None, description="Brand ID to filter by owner"),
     channel_ids: Optional[str] = Query(None, description="Comma-separated channel IDs"),
     engine: AnalyticsEngine = Depends(get_analytics_engine)
 ):
@@ -178,6 +264,7 @@ async def get_store_metrics(
     stores = await engine.get_store_metrics(
         start_date=start_date,
         end_date=end_date,
+        brand_id=brand_id,
         channel_ids=channel_ids_list
     )
     
@@ -199,6 +286,7 @@ async def get_store_metrics(
 async def get_sales_trend(
     start_date: date = Query(..., description="Start date (YYYY-MM-DD)"),
     end_date: date = Query(..., description="End date (YYYY-MM-DD)"),
+    brand_id: Optional[int] = Query(None, description="Brand ID to filter by owner"),
     store_ids: Optional[str] = Query(None, description="Comma-separated store IDs"),
     channel_ids: Optional[str] = Query(None, description="Comma-separated channel IDs"),
     engine: AnalyticsEngine = Depends(get_analytics_engine)
@@ -218,6 +306,7 @@ async def get_sales_trend(
     trend = await engine.get_sales_trend(
         start_date=start_date,
         end_date=end_date,
+        brand_id=brand_id,
         store_ids=store_ids_list,
         channel_ids=channel_ids_list
     )
@@ -239,6 +328,7 @@ async def get_sales_trend(
 async def get_hourly_distribution(
     start_date: date = Query(..., description="Start date (YYYY-MM-DD)"),
     end_date: date = Query(..., description="End date (YYYY-MM-DD)"),
+    brand_id: Optional[int] = Query(None, description="Brand ID to filter by owner"),
     store_ids: Optional[str] = Query(None, description="Comma-separated store IDs"),
     channel_ids: Optional[str] = Query(None, description="Comma-separated channel IDs"),
     engine: AnalyticsEngine = Depends(get_analytics_engine)
@@ -254,6 +344,7 @@ async def get_hourly_distribution(
     distribution = await engine.get_hourly_distribution(
         start_date=start_date,
         end_date=end_date,
+        brand_id=brand_id,
         store_ids=store_ids_list,
         channel_ids=channel_ids_list
     )
@@ -271,6 +362,7 @@ async def get_hourly_distribution(
 async def get_weekday_distribution(
     start_date: date = Query(..., description="Start date (YYYY-MM-DD)"),
     end_date: date = Query(..., description="End date (YYYY-MM-DD)"),
+    brand_id: Optional[int] = Query(None, description="Brand ID to filter by owner"),
     store_ids: Optional[str] = Query(None, description="Comma-separated store IDs"),
     channel_ids: Optional[str] = Query(None, description="Comma-separated channel IDs"),
     engine: AnalyticsEngine = Depends(get_analytics_engine)
@@ -286,6 +378,7 @@ async def get_weekday_distribution(
     distribution = await engine.get_weekday_distribution(
         start_date=start_date,
         end_date=end_date,
+        brand_id=brand_id,
         store_ids=store_ids_list,
         channel_ids=channel_ids_list
     )
@@ -307,6 +400,7 @@ async def get_weekday_distribution(
 async def get_category_metrics(
     start_date: date = Query(..., description="Start date (YYYY-MM-DD)"),
     end_date: date = Query(..., description="End date (YYYY-MM-DD)"),
+    brand_id: Optional[int] = Query(None, description="Brand ID to filter by owner"),
     store_ids: Optional[str] = Query(None, description="Comma-separated store IDs"),
     channel_ids: Optional[str] = Query(None, description="Comma-separated channel IDs"),
     engine: AnalyticsEngine = Depends(get_analytics_engine)
@@ -326,6 +420,7 @@ async def get_category_metrics(
     categories = await engine.get_category_metrics(
         start_date=start_date,
         end_date=end_date,
+        brand_id=brand_id,
         store_ids=store_ids_list,
         channel_ids=channel_ids_list
     )

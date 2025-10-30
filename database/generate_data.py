@@ -15,7 +15,6 @@ from faker import Faker
 fake = Faker('pt_BR')
 
 # Configurations
-BRAND_ID = 1
 SALES_STATUS = ['COMPLETED', 'CANCELLED']
 STATUS_WEIGHTS = [0.95, 0.05]  # 95% completed
 CATEGORIES_PRODUCTS = ['Burgers', 'Pizzas', 'Pratos', 'Combos', 'Sobremesas', 'Bebidas']
@@ -83,195 +82,222 @@ def get_hour_weight(hour):
 
 
 def setup_base_data(conn):
-    """Create brands, channels, payment types"""
+    """Create multiple brands (owners), channels, payment types"""
     print("Setting up base data...")
     cursor = conn.cursor()
     
-    # Sub-brands
-    sub_brands = ['Challenge Burger', 'Challenge Pizza', 'Challenge Sushi']
-    sub_brand_ids = []
-
-    cursor.execute("INSERT INTO brands (name) VALUES ('Nola God Level Brand')");
-    for sb in sub_brands:
-        cursor.execute(
-            "INSERT INTO sub_brands (brand_id, name) VALUES (%s, %s) RETURNING id",
-            (BRAND_ID, sb)
-        )
-        sub_brand_ids.append(cursor.fetchone()[0])
+    # Create multiple brands (owners/proprietários)
+    brands_config = [
+        ('Maria - Burguer Boutique', ['Maria Burger', 'Maria Grill']),
+        ('João - Pizza & Cia', ['João Pizza', 'João Express']),
+        ('Ana - Sushi House', ['Ana Sushi', 'Ana Premium']),
+        ('Carlos - Food Center', ['Carlos Food', 'Carlos Delivery']),
+        ('Pedro - Restaurante Popular', ['Pedro Pratos', 'Pedro Combos']),
+        ('Lucia - Bistrô Moderno', ['Lucia Bistrô', 'Lucia Café']),
+        ('Roberto - Fast Food Network', ['Roberto Fast', 'Roberto Lanches'])
+    ]
     
-    # Channels
-    channel_ids = []
-    for name, ch_type, weight, commission in CHANNELS:
-        cursor.execute("""
-            INSERT INTO channels (brand_id, name, description, type)
-            VALUES (%s, %s, %s, %s) RETURNING id
-        """, (BRAND_ID, name, f'Canal {name}', ch_type))
-        channel_ids.append({
-            'id': cursor.fetchone()[0], 
-            'name': name, 
-            'type': ch_type, 
-            'weight': weight
-        })
+    all_brands_data = []
     
-    # Payment types
-    for pt in PAYMENT_TYPES_LIST:
-        cursor.execute(
-            "INSERT INTO payment_types (brand_id, description) VALUES (%s, %s)",
-            (BRAND_ID, pt)
-        )
-    
-    conn.commit()
-    print(f"✓ Base data: {len(sub_brand_ids)} sub-brands, {len(channel_ids)} channels")
-    return sub_brand_ids, channel_ids
-
-
-def generate_stores(conn, sub_brand_ids, num_stores=50):
-    """Generate realistic stores"""
-    print(f"Generating {num_stores} stores...")
-    cursor = conn.cursor()
-    stores = []
-    
-    cities = [fake.city() for _ in range(20)]
-    
-    for i in range(num_stores):
-        city = random.choice(cities)
-        sub_brand_id = random.choice(sub_brand_ids)
-        is_active = random.random() > 0.1
-        is_own = random.random() > 0.7
+    for brand_name, sub_brand_names in brands_config:
+        # Create brand
+        cursor.execute("INSERT INTO brands (name) VALUES (%s) RETURNING id", (brand_name,))
+        brand_id = cursor.fetchone()[0]
         
-        # Brazilian coordinates (São Paulo region as reference)
-        # São Paulo: lat ~-23.5, long ~-46.6
-        base_lat = -23.5 + random.uniform(-2, 2)  # -25.5 to -21.5
-        base_long = -46.6 + random.uniform(-3, 3)  # -49.6 to -43.6
+        # Create sub-brands for this brand
+        sub_brand_ids = []
+        for sb_name in sub_brand_names:
+            cursor.execute(
+                "INSERT INTO sub_brands (brand_id, name) VALUES (%s, %s) RETURNING id",
+                (brand_id, sb_name)
+            )
+            sub_brand_ids.append(cursor.fetchone()[0])
         
-        cursor.execute("""
-            INSERT INTO stores (
-                brand_id, sub_brand_id, name, city, state, 
-                district, address_street, address_number,
-                latitude, longitude, is_active, is_own,
-                creation_date, created_at
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            RETURNING id
-        """, (
-            BRAND_ID, sub_brand_id,
-            f"{fake.company()} - {city}",
-            city, fake.estado_sigla(), fake.bairro(),
-            fake.street_name(), random.randint(10, 9999),
-            Decimal(str(round(base_lat, 6))),
-            Decimal(str(round(base_long, 6))),
-            is_active, is_own,
-            fake.date_between(start_date='-2y', end_date='-6m'),
-            datetime.now() - timedelta(days=random.randint(180, 720))
-        ))
-        stores.append(cursor.fetchone()[0])
-    
-    conn.commit()
-    print(f"✓ {len(stores)} stores created")
-    return stores
-
-
-def generate_products_and_items(conn, sub_brand_ids, num_products=500, num_items=200):
-    """Generate products, items, and option groups"""
-    print(f"Generating {num_products} products and {num_items} items...")
-    cursor = conn.cursor()
-    
-    products = []
-    items = []
-    option_groups = []
-    
-    # Product categories
-    for cat_name in CATEGORIES_PRODUCTS:
-        cursor.execute("""
-            INSERT INTO categories (brand_id, name, type)
-            VALUES (%s, %s, 'P') RETURNING id
-        """, (BRAND_ID, cat_name))
-        cat_id = cursor.fetchone()[0]
-        
-        # Products in category
-        prefixes = PRODUCT_PREFIXES.get(cat_name, [cat_name])
-        products_to_create = num_products // len(CATEGORIES_PRODUCTS)
-        
-        for i in range(products_to_create):
-            sub_brand_id = random.choice(sub_brand_ids)
-            prefix = random.choice(prefixes)
-            
-            # Use variation numbers or sizes
-            if i % 3 == 0:
-                name = f"{prefix} P #{i+1:03d}"
-            elif i % 3 == 1:
-                name = f"{prefix} M #{i+1:03d}"
-            else:
-                name = f"{prefix} G #{i+1:03d}"
-            
+        # Create channels for this brand
+        channel_ids = []
+        for name, ch_type, weight, commission in CHANNELS:
             cursor.execute("""
-                INSERT INTO products (brand_id, sub_brand_id, category_id, name, pos_uuid)
-                VALUES (%s, %s, %s, %s, %s) RETURNING id
-            """, (BRAND_ID, sub_brand_id, cat_id, name, f"prod_{cat_id}_{i}"))
-            
-            products.append({
+                INSERT INTO channels (brand_id, name, description, type)
+                VALUES (%s, %s, %s, %s) RETURNING id
+            """, (brand_id, name, f'Canal {name}', ch_type))
+            channel_ids.append({
                 'id': cursor.fetchone()[0],
                 'name': name,
-                'category': cat_name,
-                'base_price': round(random.uniform(15, 120), 2),
-                'popularity': random.betavariate(2, 5),  # More realistic distribution
-                'has_customization': random.random() > 0.4  # 60% allow customization
+                'type': ch_type,
+                'weight': weight
             })
-    
-    # Item categories (for complements/additions)
-    for cat_name in CATEGORIES_ITEMS:
-        cursor.execute("""
-            INSERT INTO categories (brand_id, name, type)
-            VALUES (%s, %s, 'I') RETURNING id
-        """, (BRAND_ID, cat_name))
-        cat_id = cursor.fetchone()[0]
         
-        # Items in category - use realistic names
-        item_names_list = ITEM_NAMES.get(cat_name, [])
+        # Create payment types for this brand
+        for pt in PAYMENT_TYPES_LIST:
+            cursor.execute(
+                "INSERT INTO payment_types (brand_id, description) VALUES (%s, %s)",
+                (brand_id, pt)
+            )
         
-        if item_names_list:
-            # Use realistic names from the list
-            for item_name in item_names_list:
-                sub_brand_id = random.choice(sub_brand_ids)
-                
-                cursor.execute("""
-                    INSERT INTO items (brand_id, sub_brand_id, category_id, name, pos_uuid)
-                    VALUES (%s, %s, %s, %s, %s) RETURNING id
-                """, (BRAND_ID, sub_brand_id, cat_id, item_name, f"item_{cat_id}_{item_name[:10]}"))
-                
-                items.append({
-                    'id': cursor.fetchone()[0],
-                    'name': item_name,
-                    'price': round(random.uniform(2, 15), 2)
-                })
-        else:
-            # Fallback to numbered items
-            for i in range(num_items // len(CATEGORIES_ITEMS)):
-                sub_brand_id = random.choice(sub_brand_ids)
-                name = f"{cat_name[:-1]} #{i+1:02d}"
-                
-                cursor.execute("""
-                    INSERT INTO items (brand_id, sub_brand_id, category_id, name, pos_uuid)
-                    VALUES (%s, %s, %s, %s, %s) RETURNING id
-                """, (BRAND_ID, sub_brand_id, cat_id, name, f"item_{cat_id}_{i}"))
-                
-                items.append({
-                    'id': cursor.fetchone()[0],
-                    'name': name,
-                    'price': round(random.uniform(2, 15), 2)
-                })
-    
-    # Option groups
-    option_group_names = ['Adicionais', 'Remover', 'Ponto da Carne', 'Tamanho']
-    for og_name in option_group_names:
-        cursor.execute("""
-            INSERT INTO option_groups (brand_id, name)
-            VALUES (%s, %s) RETURNING id
-        """, (BRAND_ID, og_name))
-        option_groups.append(cursor.fetchone()[0])
+        all_brands_data.append({
+            'brand_id': brand_id,
+            'brand_name': brand_name,
+            'sub_brand_ids': sub_brand_ids,
+            'channel_ids': channel_ids
+        })
     
     conn.commit()
-    print(f"✓ {len(products)} products, {len(items)} items, {len(option_groups)} option groups")
-    return products, items, option_groups
+    print(f"✓ Base data: {len(all_brands_data)} brands, {len(all_brands_data) * 6} channels")
+    return all_brands_data
+
+
+def generate_stores(conn, brands_data, num_stores=50):
+    """Generate realistic stores distributed across brands"""
+    print(f"Generating {num_stores} stores across {len(brands_data)} brands...")
+    cursor = conn.cursor()
+    
+    # Distribute stores per brand: Maria=3, others get 8,7,8,8,8,8 respectively
+    stores_distribution = [3, 8, 7, 8, 8, 8, 8]  # Total = 50
+    
+    all_stores = []
+    cities = [fake.city() for _ in range(20)]
+    
+    for brand_data, num_brand_stores in zip(brands_data, stores_distribution):
+        brand_id = brand_data['brand_id']
+        brand_name = brand_data['brand_name']
+        sub_brand_ids = brand_data['sub_brand_ids']
+        
+        print(f"  Creating {num_brand_stores} stores for {brand_name}...")
+        
+        for i in range(num_brand_stores):
+            city = random.choice(cities)
+            sub_brand_id = random.choice(sub_brand_ids)
+            is_active = random.random() > 0.1
+            is_own = random.random() > 0.7
+            
+            # Brazilian coordinates (São Paulo region as reference)
+            # São Paulo: lat ~-23.5, long ~-46.6
+            base_lat = -23.5 + random.uniform(-2, 2)  # -25.5 to -21.5
+            base_long = -46.6 + random.uniform(-3, 3)  # -49.6 to -43.6
+            
+            cursor.execute("""
+                INSERT INTO stores (
+                    brand_id, sub_brand_id, name, city, state, 
+                    district, address_street, address_number,
+                    latitude, longitude, is_active, is_own,
+                    creation_date, created_at
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING id
+            """, (
+                brand_id, sub_brand_id,
+                f"{fake.company()} - {city}",
+                city, fake.estado_sigla(), fake.bairro(),
+                fake.street_name(), random.randint(10, 9999),
+                Decimal(str(round(base_lat, 6))),
+                Decimal(str(round(base_long, 6))),
+                is_active, is_own,
+                fake.date_between(start_date='-2y', end_date='-6m'),
+                datetime.now() - timedelta(days=random.randint(180, 720))
+            ))
+            store_id = cursor.fetchone()[0]
+            all_stores.append({
+                'id': store_id,
+                'brand_id': brand_id,
+                'channel_ids': brand_data['channel_ids']
+            })
+    
+    conn.commit()
+    print(f"✓ {len(all_stores)} stores created across all brands")
+    return all_stores
+
+
+def generate_products_and_items(conn, brands_data, num_products=500, num_items=200):
+    """Generate products, items, and option groups for all brands"""
+    print(f"Generating products and items for {len(brands_data)} brands...")
+    cursor = conn.cursor()
+    
+    all_products = []
+    all_items = []
+    all_option_groups = []
+    
+    # Generate products/items for each brand
+    for brand_data in brands_data:
+        brand_id = brand_data['brand_id']
+        sub_brand_ids = brand_data['sub_brand_ids']
+        
+        # Product categories for this brand
+        for cat_name in CATEGORIES_PRODUCTS:
+            cursor.execute("""
+                INSERT INTO categories (brand_id, name, type)
+                VALUES (%s, %s, 'P') RETURNING id
+            """, (brand_id, cat_name))
+            cat_id = cursor.fetchone()[0]
+            
+            # Products in category (distribute total among brands)
+            prefixes = PRODUCT_PREFIXES.get(cat_name, [cat_name])
+            products_to_create = (num_products // len(CATEGORIES_PRODUCTS)) // len(brands_data)
+            
+            for i in range(products_to_create):
+                sub_brand_id = random.choice(sub_brand_ids)
+                prefix = random.choice(prefixes)
+                
+                # Use variation numbers or sizes
+                if i % 3 == 0:
+                    name = f"{prefix} P #{i+1:03d}"
+                elif i % 3 == 1:
+                    name = f"{prefix} M #{i+1:03d}"
+                else:
+                    name = f"{prefix} G #{i+1:03d}"
+                
+                cursor.execute("""
+                    INSERT INTO products (brand_id, sub_brand_id, category_id, name, pos_uuid)
+                    VALUES (%s, %s, %s, %s, %s) RETURNING id
+                """, (brand_id, sub_brand_id, cat_id, name, f"prod_{brand_id}_{cat_id}_{i}"))
+                
+                all_products.append({
+                    'id': cursor.fetchone()[0],
+                    'name': name,
+                    'category': cat_name,
+                    'brand_id': brand_id,
+                    'base_price': round(random.uniform(15, 120), 2),
+                    'popularity': random.betavariate(2, 5),
+                    'has_customization': random.random() > 0.4
+                })
+        
+        # Item categories for this brand
+        for cat_name in CATEGORIES_ITEMS:
+            cursor.execute("""
+                INSERT INTO categories (brand_id, name, type)
+                VALUES (%s, %s, 'I') RETURNING id
+            """, (brand_id, cat_name))
+            cat_id = cursor.fetchone()[0]
+            
+            # Items in category
+            item_names_list = ITEM_NAMES.get(cat_name, [])
+            
+            if item_names_list:
+                for item_name in item_names_list:
+                    sub_brand_id = random.choice(sub_brand_ids)
+                    
+                    cursor.execute("""
+                        INSERT INTO items (brand_id, sub_brand_id, category_id, name, pos_uuid)
+                        VALUES (%s, %s, %s, %s, %s) RETURNING id
+                    """, (brand_id, sub_brand_id, cat_id, item_name, f"item_{brand_id}_{cat_id}_{item_name[:10]}"))
+                    
+                    all_items.append({
+                        'id': cursor.fetchone()[0],
+                        'name': item_name,
+                        'brand_id': brand_id,
+                        'price': round(random.uniform(2, 15), 2)
+                    })
+        
+        # Option groups for this brand
+        option_group_names = ['Adicionais', 'Remover', 'Ponto da Carne', 'Tamanho']
+        for og_name in option_group_names:
+            cursor.execute("""
+                INSERT INTO option_groups (brand_id, name)
+                VALUES (%s, %s) RETURNING id
+            """, (brand_id, og_name))
+            all_option_groups.append(cursor.fetchone()[0])
+    
+    conn.commit()
+    print(f"✓ {len(all_products)} products, {len(all_items)} items, {len(all_option_groups)} option groups")
+    return all_products, all_items, all_option_groups
 
 
 def generate_customers(conn, num_customers=10000):
@@ -306,7 +332,7 @@ def generate_customers(conn, num_customers=10000):
     return customer_ids
 
 
-def generate_sales(conn, stores, channels, products, items, option_groups, customers, months=6):
+def generate_sales(conn, stores, products, items, option_groups, customers, months=6):
     """Generate sales with realistic patterns"""
     print(f"Generating sales for {months} months...")
     
@@ -349,15 +375,24 @@ def generate_sales(conn, stores, channels, products, items, option_groups, custo
                 second=random.randint(0, 59)
             )
             
-            # Select entities
-            store_id = random.choice(stores)
-            channel = random.choices(channels, weights=[c['weight'] for c in channels])[0]
+            # Select store (which has brand_id and channel_ids)
+            store = random.choice(stores)
+            store_id = store['id']
+            brand_id = store['brand_id']
+            
+            # Select channel for this store's brand
+            channel = random.choices(store['channel_ids'], weights=[c['weight'] for c in store['channel_ids']])[0]
+            
+            # Select products from same brand
+            brand_products = [p for p in products if p['brand_id'] == brand_id]
+            brand_items = [it for it in items if it['brand_id'] == brand_id]
+            
             customer_id = random.choice(customers) if random.random() > 0.3 else None
             
             # Generate sale
             sale_data = generate_single_sale(
                 sale_time, store_id, channel, customer_id, 
-                products, items, option_groups
+                brand_products, brand_items, option_groups
             )
             
             sales_batch.append(sale_data)
@@ -684,15 +719,15 @@ def main():
     conn = get_db_connection(args.db_url)
     
     try:
-        sub_brand_ids, channels = setup_base_data(conn)
-        stores = generate_stores(conn, sub_brand_ids, args.stores)
+        brands_data = setup_base_data(conn)
+        stores = generate_stores(conn, brands_data, args.stores)
         products, items, option_groups = generate_products_and_items(
-            conn, sub_brand_ids, args.products, args.items
+            conn, brands_data, args.products, args.items
         )
         customers = generate_customers(conn, args.customers)
         
         total_sales = generate_sales(
-            conn, stores, channels, products, items, 
+            conn, stores, products, items, 
             option_groups, customers, args.months
         )
         
@@ -709,17 +744,32 @@ def main():
         cursor.execute("SELECT COUNT(*) FROM item_product_sales")
         item_sales_count = cursor.fetchone()[0]
         
+        # Brands distribution
+        cursor.execute("""
+            SELECT b.name, COUNT(DISTINCT s.id) as store_count, COUNT(sa.id) as sales_count
+            FROM brands b
+            LEFT JOIN stores s ON s.brand_id = b.id
+            LEFT JOIN sales sa ON sa.store_id = s.id
+            GROUP BY b.id, b.name
+            ORDER BY b.id
+        """)
+        brands_stats = cursor.fetchall()
+        
         print()
         print("=" * 70)
         print("✓ Data generation complete!")
-        print(f"  Stores: {len(stores):,}")
-        print(f"  Products: {len(products):,}")
-        print(f"  Items/Complements: {len(items):,}")
-        print(f"  Customers: {len(customers):,}")
-        print(f"  Sales: {sales_count:,}")
+        print(f"  Total Stores: {len(stores):,}")
+        print(f"  Total Products: {len(products):,}")
+        print(f"  Total Items/Complements: {len(items):,}")
+        print(f"  Total Customers: {len(customers):,}")
+        print(f"  Total Sales: {sales_count:,}")
         print(f"  Product Sales: {product_sales_count:,}")
         print(f"  Item Customizations: {item_sales_count:,}")
         print(f"  Avg items per sale: {product_sales_count/sales_count:.1f}")
+        print()
+        print("  Distribution by Brand:")
+        for brand_name, store_count, brand_sales in brands_stats:
+            print(f"    • {brand_name}: {store_count} stores, {brand_sales:,} sales")
         print("=" * 70)
         
     except Exception as e:

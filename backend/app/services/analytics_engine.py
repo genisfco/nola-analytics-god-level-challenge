@@ -39,6 +39,7 @@ class AnalyticsEngine:
         self,
         start_date: date,
         end_date: date,
+        brand_id: Optional[int] = None,
         store_ids: Optional[list[int]] = None,
         channel_ids: Optional[list[int]] = None
     ) -> OverviewMetrics:
@@ -47,20 +48,26 @@ class AnalyticsEngine:
         """
         # Build WHERE clause
         where_clauses = [
-            "created_at >= $1",
-            "created_at < $2"
+            "s.created_at >= $1",
+            "s.created_at < $2"
         ]
         params = [start_date, end_date + timedelta(days=1)]
         param_count = 2
         
+        # Filter by brand_id (through stores table)
+        if brand_id:
+            param_count += 1
+            where_clauses.append(f"st.brand_id = ${param_count}")
+            params.append(brand_id)
+        
         if store_ids:
             param_count += 1
-            where_clauses.append(f"store_id = ANY(${param_count})")
+            where_clauses.append(f"s.store_id = ANY(${param_count})")
             params.append(store_ids)
         
         if channel_ids:
             param_count += 1
-            where_clauses.append(f"channel_id = ANY(${param_count})")
+            where_clauses.append(f"s.channel_id = ANY(${param_count})")
             params.append(channel_ids)
         
         where_clause = " AND ".join(where_clauses)
@@ -68,16 +75,17 @@ class AnalyticsEngine:
         query = f"""
         SELECT 
             COUNT(*) as total_sales,
-            COALESCE(SUM(CASE WHEN sale_status_desc = 'COMPLETED' THEN total_amount ELSE 0 END), 0) as total_revenue,
-            COALESCE(AVG(CASE WHEN sale_status_desc = 'COMPLETED' THEN total_amount ELSE NULL END), 0) as average_ticket,
-            COUNT(*) FILTER (WHERE sale_status_desc = 'COMPLETED') as completed_sales,
-            COUNT(*) FILTER (WHERE sale_status_desc = 'CANCELLED') as cancelled_sales,
+            COALESCE(SUM(CASE WHEN s.sale_status_desc = 'COMPLETED' THEN s.total_amount ELSE 0 END), 0) as total_revenue,
+            COALESCE(AVG(CASE WHEN s.sale_status_desc = 'COMPLETED' THEN s.total_amount ELSE NULL END), 0) as average_ticket,
+            COUNT(*) FILTER (WHERE s.sale_status_desc = 'COMPLETED') as completed_sales,
+            COUNT(*) FILTER (WHERE s.sale_status_desc = 'CANCELLED') as cancelled_sales,
             ROUND(
-                (COUNT(*) FILTER (WHERE sale_status_desc = 'CANCELLED')::NUMERIC / NULLIF(COUNT(*), 0) * 100), 
+                (COUNT(*) FILTER (WHERE s.sale_status_desc = 'CANCELLED')::NUMERIC / NULLIF(COUNT(*), 0) * 100), 
                 2
             ) as cancellation_rate,
-            COUNT(DISTINCT customer_id) FILTER (WHERE customer_id IS NOT NULL) as total_customers
-        FROM sales
+            COUNT(DISTINCT s.customer_id) FILTER (WHERE s.customer_id IS NOT NULL) as total_customers
+        FROM sales s
+        INNER JOIN stores st ON s.store_id = st.id
         WHERE {where_clause}
         """
         
@@ -102,6 +110,7 @@ class AnalyticsEngine:
         start_date: date,
         end_date: date,
         limit: int = 20,
+        brand_id: Optional[int] = None,
         store_ids: Optional[list[int]] = None,
         channel_ids: Optional[list[int]] = None
     ) -> list[ProductRanking]:
@@ -115,6 +124,11 @@ class AnalyticsEngine:
         ]
         params = [start_date, end_date + timedelta(days=1)]
         param_count = 2
+        
+        if brand_id:
+            param_count += 1
+            where_clauses.append(f"st.brand_id = ${param_count}")
+            params.append(brand_id)
         
         if store_ids:
             param_count += 1
@@ -139,6 +153,7 @@ class AnalyticsEngine:
         FROM product_sales ps
         JOIN products p ON p.id = ps.product_id
         JOIN sales s ON s.id = ps.sale_id
+        INNER JOIN stores st ON s.store_id = st.id
         LEFT JOIN categories c ON c.id = p.category_id
         WHERE {where_clause}
         GROUP BY p.id, p.name, c.name
@@ -172,6 +187,7 @@ class AnalyticsEngine:
         self,
         start_date: date,
         end_date: date,
+        brand_id: Optional[int] = None,
         store_ids: Optional[list[int]] = None
     ) -> list[ChannelMetrics]:
         """
@@ -183,9 +199,16 @@ class AnalyticsEngine:
             "s.sale_status_desc = 'COMPLETED'"
         ]
         params = [start_date, end_date + timedelta(days=1)]
+        param_count = 2
+        
+        if brand_id:
+            param_count += 1
+            where_clauses.append(f"st.brand_id = ${param_count}")
+            params.append(brand_id)
         
         if store_ids:
-            where_clauses.append("s.store_id = ANY($3)")
+            param_count += 1
+            where_clauses.append(f"s.store_id = ANY(${param_count})")
             params.append(store_ids)
         
         where_clause = " AND ".join(where_clauses)
@@ -200,6 +223,7 @@ class AnalyticsEngine:
                 SUM(s.total_amount) as total_revenue,
                 AVG(s.total_amount) as average_ticket
             FROM sales s
+            INNER JOIN stores st ON s.store_id = st.id
             JOIN channels c ON c.id = s.channel_id
             WHERE {where_clause}
             GROUP BY c.id, c.name, c.type
@@ -238,6 +262,7 @@ class AnalyticsEngine:
         self,
         start_date: date,
         end_date: date,
+        brand_id: Optional[int] = None,
         channel_ids: Optional[list[int]] = None
     ) -> list[StoreMetrics]:
         """
@@ -249,9 +274,16 @@ class AnalyticsEngine:
             "s.sale_status_desc = 'COMPLETED'"
         ]
         params = [start_date, end_date + timedelta(days=1)]
+        param_count = 2
+        
+        if brand_id:
+            param_count += 1
+            where_clauses.append(f"st.brand_id = ${param_count}")
+            params.append(brand_id)
         
         if channel_ids:
-            where_clauses.append("s.channel_id = ANY($3)")
+            param_count += 1
+            where_clauses.append(f"s.channel_id = ANY(${param_count})")
             params.append(channel_ids)
         
         where_clause = " AND ".join(where_clauses)
@@ -306,6 +338,7 @@ class AnalyticsEngine:
         self,
         start_date: date,
         end_date: date,
+        brand_id: Optional[int] = None,
         store_ids: Optional[list[int]] = None,
         channel_ids: Optional[list[int]] = None
     ) -> list[SalesTrend]:
@@ -313,35 +346,41 @@ class AnalyticsEngine:
         Get daily sales trend
         """
         where_clauses = [
-            "created_at >= $1",
-            "created_at < $2"
+            "s.created_at >= $1",
+            "s.created_at < $2"
         ]
         params = [start_date, end_date + timedelta(days=1)]
         param_count = 2
         
+        if brand_id:
+            param_count += 1
+            where_clauses.append(f"st.brand_id = ${param_count}")
+            params.append(brand_id)
+        
         if store_ids:
             param_count += 1
-            where_clauses.append(f"store_id = ANY(${param_count})")
+            where_clauses.append(f"s.store_id = ANY(${param_count})")
             params.append(store_ids)
         
         if channel_ids:
             param_count += 1
-            where_clauses.append(f"channel_id = ANY(${param_count})")
+            where_clauses.append(f"s.channel_id = ANY(${param_count})")
             params.append(channel_ids)
         
         where_clause = " AND ".join(where_clauses)
         
         query = f"""
         SELECT 
-            DATE(created_at) as date,
+            DATE(s.created_at) as date,
             COUNT(*) as total_sales,
-            COALESCE(SUM(CASE WHEN sale_status_desc = 'COMPLETED' THEN total_amount ELSE 0 END), 0) as total_revenue,
-            COALESCE(AVG(CASE WHEN sale_status_desc = 'COMPLETED' THEN total_amount ELSE NULL END), 0) as average_ticket,
-            COUNT(*) FILTER (WHERE sale_status_desc = 'COMPLETED') as completed_sales,
-            COUNT(*) FILTER (WHERE sale_status_desc = 'CANCELLED') as cancelled_sales
-        FROM sales
+            COALESCE(SUM(CASE WHEN s.sale_status_desc = 'COMPLETED' THEN s.total_amount ELSE 0 END), 0) as total_revenue,
+            COALESCE(AVG(CASE WHEN s.sale_status_desc = 'COMPLETED' THEN s.total_amount ELSE NULL END), 0) as average_ticket,
+            COUNT(*) FILTER (WHERE s.sale_status_desc = 'COMPLETED') as completed_sales,
+            COUNT(*) FILTER (WHERE s.sale_status_desc = 'CANCELLED') as cancelled_sales
+        FROM sales s
+        INNER JOIN stores st ON s.store_id = st.id
         WHERE {where_clause}
-        GROUP BY DATE(created_at)
+        GROUP BY DATE(s.created_at)
         ORDER BY date ASC
         """
         
@@ -367,6 +406,7 @@ class AnalyticsEngine:
         self,
         start_date: date,
         end_date: date,
+        brand_id: Optional[int] = None,
         store_ids: Optional[list[int]] = None,
         channel_ids: Optional[list[int]] = None
     ) -> list[HourlyDistribution]:
@@ -374,32 +414,38 @@ class AnalyticsEngine:
         Get sales distribution by hour of day
         """
         where_clauses = [
-            "created_at >= $1",
-            "created_at < $2",
-            "sale_status_desc = 'COMPLETED'"
+            "s.created_at >= $1",
+            "s.created_at < $2",
+            "s.sale_status_desc = 'COMPLETED'"
         ]
         params = [start_date, end_date + timedelta(days=1)]
         param_count = 2
         
+        if brand_id:
+            param_count += 1
+            where_clauses.append(f"st.brand_id = ${param_count}")
+            params.append(brand_id)
+        
         if store_ids:
             param_count += 1
-            where_clauses.append(f"store_id = ANY(${param_count})")
+            where_clauses.append(f"s.store_id = ANY(${param_count})")
             params.append(store_ids)
         
         if channel_ids:
             param_count += 1
-            where_clauses.append(f"channel_id = ANY(${param_count})")
+            where_clauses.append(f"s.channel_id = ANY(${param_count})")
             params.append(channel_ids)
         
         where_clause = " AND ".join(where_clauses)
         
         query = f"""
         SELECT 
-            EXTRACT(HOUR FROM created_at)::INT as hour,
+            EXTRACT(HOUR FROM s.created_at)::INT as hour,
             COUNT(*) as total_sales,
-            SUM(total_amount) as total_revenue,
-            AVG(total_amount) as average_ticket
-        FROM sales
+            SUM(s.total_amount) as total_revenue,
+            AVG(s.total_amount) as average_ticket
+        FROM sales s
+        INNER JOIN stores st ON s.store_id = st.id
         WHERE {where_clause}
         GROUP BY hour
         ORDER BY hour ASC
@@ -421,6 +467,7 @@ class AnalyticsEngine:
         self,
         start_date: date,
         end_date: date,
+        brand_id: Optional[int] = None,
         store_ids: Optional[list[int]] = None,
         channel_ids: Optional[list[int]] = None
     ) -> list[WeekdayDistribution]:
@@ -428,21 +475,26 @@ class AnalyticsEngine:
         Get sales distribution by weekday
         """
         where_clauses = [
-            "created_at >= $1",
-            "created_at < $2",
-            "sale_status_desc = 'COMPLETED'"
+            "s.created_at >= $1",
+            "s.created_at < $2",
+            "s.sale_status_desc = 'COMPLETED'"
         ]
         params = [start_date, end_date + timedelta(days=1)]
         param_count = 2
         
+        if brand_id:
+            param_count += 1
+            where_clauses.append(f"st.brand_id = ${param_count}")
+            params.append(brand_id)
+        
         if store_ids:
             param_count += 1
-            where_clauses.append(f"store_id = ANY(${param_count})")
+            where_clauses.append(f"s.store_id = ANY(${param_count})")
             params.append(store_ids)
         
         if channel_ids:
             param_count += 1
-            where_clauses.append(f"channel_id = ANY(${param_count})")
+            where_clauses.append(f"s.channel_id = ANY(${param_count})")
             params.append(channel_ids)
         
         where_clause = " AND ".join(where_clauses)
@@ -451,11 +503,12 @@ class AnalyticsEngine:
         
         query = f"""
         SELECT 
-            EXTRACT(DOW FROM created_at)::INT as weekday,
+            EXTRACT(DOW FROM s.created_at)::INT as weekday,
             COUNT(*) as total_sales,
-            SUM(total_amount) as total_revenue,
-            AVG(total_amount) as average_ticket
-        FROM sales
+            SUM(s.total_amount) as total_revenue,
+            AVG(s.total_amount) as average_ticket
+        FROM sales s
+        INNER JOIN stores st ON s.store_id = st.id
         WHERE {where_clause}
         GROUP BY weekday
         ORDER BY weekday ASC
@@ -482,6 +535,7 @@ class AnalyticsEngine:
         self,
         start_date: date,
         end_date: date,
+        brand_id: Optional[int] = None,
         store_ids: Optional[list[int]] = None,
         channel_ids: Optional[list[int]] = None
     ) -> list[CategoryMetrics]:
@@ -495,6 +549,11 @@ class AnalyticsEngine:
         ]
         params = [start_date, end_date + timedelta(days=1)]
         param_count = 2
+        
+        if brand_id:
+            param_count += 1
+            where_clauses.append(f"st.brand_id = ${param_count}")
+            params.append(brand_id)
         
         if store_ids:
             param_count += 1
@@ -518,6 +577,7 @@ class AnalyticsEngine:
             FROM product_sales ps
             JOIN products p ON p.id = ps.product_id
             JOIN sales s ON s.id = ps.sale_id
+            INNER JOIN stores st ON s.store_id = st.id
             LEFT JOIN categories c ON c.id = p.category_id
             WHERE {where_clause}
             GROUP BY c.name

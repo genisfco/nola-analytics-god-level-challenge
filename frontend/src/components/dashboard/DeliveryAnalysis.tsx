@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
 import { Truck, Clock, MapPin, TrendingDown, TrendingUp } from 'lucide-react'
-import { AnalyticsAPI, DeliveryPerformance, DeliveryByRegion } from '@/lib/api'
+import { useApi } from '@/hooks/useApi'
+import { useBrand } from '@/contexts/BrandContext'
+import { DeliveryPerformance, DeliveryByRegion } from '@/lib/api'
 import { formatNumber } from '@/lib/utils'
 
 interface DeliveryAnalysisProps {
@@ -15,9 +17,16 @@ function formatTime(seconds: number): string {
 }
 
 export function DeliveryAnalysis({ startDate, endDate }: DeliveryAnalysisProps) {
+  const { fetchApi } = useApi()
+  const { brandId } = useBrand()
+
   const { data, isLoading } = useQuery({
-    queryKey: ['delivery-performance', startDate, endDate],
-    queryFn: () => AnalyticsAPI.getDeliveryPerformance({ startDate, endDate }),
+    queryKey: ['delivery-performance', startDate, endDate, brandId],
+    queryFn: () => fetchApi('/delivery/performance', {
+      start_date: startDate,
+      end_date: endDate,
+    }),
+    enabled: !!brandId,
   })
 
   if (isLoading) {

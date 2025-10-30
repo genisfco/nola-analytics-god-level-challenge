@@ -33,5 +33,7 @@ export function getDefaultDateRange() {
   return {
     startDate: format(startDate, 'yyyy-MM-dd'),
     endDate: format(endDate, 'yyyy-MM-dd'),
+    storeIds: undefined as number[] | undefined,
+    channelIds: undefined as number[] | undefined,
   }
 }

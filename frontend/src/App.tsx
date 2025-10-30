@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Dashboard } from './components/dashboard/Dashboard'
 import { AdvancedDashboard } from './components/dashboard/AdvancedDashboard'
+import { BrandSelector } from './components/BrandSelector'
 import { BarChart3, Search } from 'lucide-react'
 
 function App() {
@@ -8,6 +9,9 @@ function App() {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Brand Selector */}
+      <BrandSelector />
+
       {/* Tab Navigation */}
       <div className="bg-card border-b border-border sticky top-0 z-50 shadow-sm">
         <div className="container mx-auto px-6">
@@ -32,10 +36,7 @@ function App() {
               }`}
             >
               <Search className="w-4 h-4" />
-              Analytics Avançado
-              <span className="px-2 py-0.5 bg-primary/10 text-primary text-xs rounded-full font-semibold">
-                Novo
-              </span>
+              Analytics Avançado              
             </button>
           </div>
         </div>

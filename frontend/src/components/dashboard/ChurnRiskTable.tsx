@@ -1,7 +1,21 @@
 import { useQuery } from '@tanstack/react-query'
-import { UserX, Mail, Phone, Calendar, TrendingDown, Heart } from 'lucide-react'
-import { AnalyticsAPI, ChurnRiskCustomer } from '@/lib/api'
+import { UserX, Mail, Phone, Calendar, Heart } from 'lucide-react'
+import { useApi } from '@/hooks/useApi'
+import { useBrand } from '@/contexts/BrandContext'
+import { ChurnRiskCustomer } from '@/lib/api'
 import { formatCurrency, formatNumber } from '@/lib/utils'
+
+interface ChurnRiskResponse {
+  customers: ChurnRiskCustomer[]
+  total_at_risk: number
+  criteria: {
+    min_purchases: number
+    days_inactive: number
+  }
+  period: {
+    analysis_date: string
+  }
+}
 
 interface ChurnRiskTableProps {
   minPurchases?: number
@@ -14,9 +28,17 @@ export function ChurnRiskTable({
   daysInactive = 30, 
   limit = 50 
 }: ChurnRiskTableProps) {
-  const { data, isLoading } = useQuery({
-    queryKey: ['churn-risk', minPurchases, daysInactive, limit],
-    queryFn: () => AnalyticsAPI.getChurnRiskCustomers(minPurchases, daysInactive, limit),
+  const { fetchApi } = useApi()
+  const { brandId } = useBrand()
+
+  const { data, isLoading } = useQuery<ChurnRiskResponse>({
+    queryKey: ['churn-risk', minPurchases, daysInactive, limit, brandId],
+    queryFn: () => fetchApi<ChurnRiskResponse>('/customers/churn-risk', {
+      min_purchases: minPurchases,
+      days_inactive: daysInactive,
+      limit,
+    }),
+    enabled: !!brandId,
   })
 
   if (isLoading) {
@@ -33,7 +55,7 @@ export function ChurnRiskTable({
         <div className="flex items-center gap-2 mb-4">
           <Heart className="w-5 h-5 text-green-600" />
           <h3 className="text-lg font-semibold text-card-foreground">
-            Clientes em Risco de Churn
+            Clientes em Risco
           </h3>
         </div>
         <div className="text-center py-8">
@@ -54,7 +76,7 @@ export function ChurnRiskTable({
         <div className="flex items-center gap-2">
           <UserX className="w-5 h-5 text-red-600" />
           <h3 className="text-lg font-semibold text-card-foreground">
-            Clientes em Risco de Churn
+            Clientes em Risco
           </h3>
         </div>
         <div className="text-right">

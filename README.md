@@ -57,8 +57,8 @@ Cache (Redis) + Database (PostgreSQL)
 ### 1. Clone e Setup
 
 ```bash
-git clone https://github.com/SEU-USUARIO/restaurant-analytics-platform.git
-cd restaurant-analytics-platform
+git clone https://github.com/genisfco/nola-analytics-god-level-challenge.git
+cd nola-analytics-god-level-challenge
 ```
 
 ### 2. Gere os Dados (primeira vez)

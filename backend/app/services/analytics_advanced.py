@@ -31,6 +31,7 @@ class AdvancedAnalyticsEngine:
         self,
         start_date: date,
         end_date: date,
+        brand_id: Optional[int] = None,
         store_ids: Optional[list[int]] = None
     ) -> tuple[DeliveryPerformance, list[DeliveryByRegion], list[DeliveryTrend]]:
         """
@@ -43,9 +44,16 @@ class AdvancedAnalyticsEngine:
             "ds.id IS NOT NULL"
         ]
         params = [start_date, end_date + timedelta(days=1)]
+        param_count = 2
+        
+        if brand_id:
+            param_count += 1
+            where_clauses.append(f"st.brand_id = ${param_count}")
+            params.append(brand_id)
         
         if store_ids:
-            where_clauses.append("s.store_id = ANY($3)")
+            param_count += 1
+            where_clauses.append(f"s.store_id = ANY(${param_count})")
             params.append(store_ids)
         
         where_clause = " AND ".join(where_clauses)
@@ -58,6 +66,7 @@ class AdvancedAnalyticsEngine:
             COUNT(*) as total_deliveries,
             COUNT(*) FILTER (WHERE (s.delivery_seconds + s.production_seconds) <= 2700) as on_time_deliveries
         FROM sales s
+        INNER JOIN stores st ON s.store_id = st.id
         JOIN delivery_sales ds ON ds.sale_id = s.id
         WHERE {where_clause}
         """
@@ -85,6 +94,7 @@ class AdvancedAnalyticsEngine:
                 AVG(s.production_seconds) as avg_production_time,
                 COUNT(*) FILTER (WHERE (s.delivery_seconds + s.production_seconds) <= 2700) as on_time_deliveries
             FROM sales s
+            INNER JOIN stores st ON s.store_id = st.id
             JOIN delivery_sales ds ON ds.sale_id = s.id
             JOIN delivery_addresses da ON da.sale_id = s.id
             WHERE {where_clause}
@@ -128,6 +138,7 @@ class AdvancedAnalyticsEngine:
             COUNT(*) as total_deliveries,
             ROUND((COUNT(*) FILTER (WHERE (s.delivery_seconds + s.production_seconds) <= 2700)::NUMERIC / NULLIF(COUNT(*), 0) * 100), 2) as on_time_rate
         FROM sales s
+        INNER JOIN stores st ON s.store_id = st.id
         JOIN delivery_sales ds ON ds.sale_id = s.id
         WHERE {where_clause}
         GROUP BY DATE(s.created_at)
@@ -157,6 +168,7 @@ class AdvancedAnalyticsEngine:
         self,
         start_date: date,
         end_date: date,
+        brand_id: Optional[int] = None,
         reference_date: Optional[date] = None
     ) -> list[CustomerRFM]:
         """
@@ -165,7 +177,9 @@ class AdvancedAnalyticsEngine:
         if not reference_date:
             reference_date = end_date
         
-        query = """
+        brand_filter = "AND st.brand_id = $4" if brand_id else ""
+        
+        query = f"""
         WITH customer_stats AS (
             SELECT 
                 c.id as customer_id,
@@ -176,10 +190,12 @@ class AdvancedAnalyticsEngine:
                 SUM(s.total_amount) as monetary
             FROM customers c
             JOIN sales s ON s.customer_id = c.id
+            INNER JOIN stores st ON s.store_id = st.id
             WHERE s.created_at >= $1
                 AND s.created_at < $2
                 AND s.sale_status_desc = 'COMPLETED'
                 AND c.id IS NOT NULL
+                {brand_filter}
             GROUP BY c.id, c.customer_name, s.customer_name
             HAVING COUNT(*) >= 1
         )
@@ -210,12 +226,11 @@ class AdvancedAnalyticsEngine:
         LIMIT 1000
         """
         
-        results = await self.db.fetch_all(
-            query,
-            start_date,
-            end_date + timedelta(days=1),
-            reference_date
-        )
+        params = [start_date, end_date + timedelta(days=1), reference_date]
+        if brand_id:
+            params.append(brand_id)
+        
+        results = await self.db.fetch_all(query, *params)
         
         return [
             CustomerRFM(
@@ -234,20 +249,25 @@ class AdvancedAnalyticsEngine:
         self,
         min_purchases: int = 3,
         days_inactive: int = 30,
+        brand_id: Optional[int] = None,
         limit: int = 100
     ) -> list[ChurnRiskCustomer]:
         """
         Get customers at risk of churning (bought X+ times but haven't returned in Y days)
         """
-        query = """
+        brand_filter = "AND st.brand_id = $4" if brand_id else ""
+        
+        query = f"""
         WITH purchase_intervals AS (
             SELECT 
-                customer_id,
-                created_at,
-                created_at::date - LAG(created_at::date) OVER (PARTITION BY customer_id ORDER BY created_at) as days_between
-            FROM sales
-            WHERE sale_status_desc = 'COMPLETED'
-                AND customer_id IS NOT NULL
+                s.customer_id,
+                s.created_at,
+                s.created_at::date - LAG(s.created_at::date) OVER (PARTITION BY s.customer_id ORDER BY s.created_at) as days_between
+            FROM sales s
+            INNER JOIN stores st ON s.store_id = st.id
+            WHERE s.sale_status_desc = 'COMPLETED'
+                AND s.customer_id IS NOT NULL
+                {brand_filter}
         ),
         customer_stats AS (
             SELECT 
@@ -266,8 +286,10 @@ class AdvancedAnalyticsEngine:
                 ), 0.0) as avg_days_between_purchases
             FROM customers c
             JOIN sales s ON s.customer_id = c.id
+            INNER JOIN stores st ON s.store_id = st.id
             WHERE s.sale_status_desc = 'COMPLETED'
                 AND c.id IS NOT NULL
+                {brand_filter}
             GROUP BY c.id, c.customer_name, c.email, c.phone_number
             HAVING COUNT(*) >= $1
                 AND CURRENT_DATE - MAX(s.created_at::date) >= $2
@@ -277,8 +299,10 @@ class AdvancedAnalyticsEngine:
                 s.customer_id,
                 ch.name as channel_name
             FROM sales s
+            INNER JOIN stores st ON s.store_id = st.id
             JOIN channels ch ON ch.id = s.channel_id
             WHERE s.sale_status_desc = 'COMPLETED'
+                {brand_filter}
             GROUP BY s.customer_id, ch.name
             ORDER BY s.customer_id, COUNT(*) DESC
         ),
@@ -287,9 +311,11 @@ class AdvancedAnalyticsEngine:
                 s.customer_id,
                 p.name as product_name
             FROM sales s
+            INNER JOIN stores st ON s.store_id = st.id
             JOIN product_sales ps ON ps.sale_id = s.id
             JOIN products p ON p.id = ps.product_id
             WHERE s.sale_status_desc = 'COMPLETED'
+                {brand_filter}
             GROUP BY s.customer_id, p.name
             ORDER BY s.customer_id, COUNT(*) DESC
         )
@@ -304,7 +330,11 @@ class AdvancedAnalyticsEngine:
         LIMIT $3
         """
         
-        results = await self.db.fetch_all(query, min_purchases, days_inactive, limit)
+        params = [min_purchases, days_inactive, limit]
+        if brand_id:
+            params.append(brand_id)
+        
+        results = await self.db.fetch_all(query, *params)
         
         return [
             ChurnRiskCustomer(
@@ -331,6 +361,7 @@ class AdvancedAnalyticsEngine:
         self,
         start_date: date,
         end_date: date,
+        brand_id: Optional[int] = None,
         weekday: Optional[int] = None,  # 0=Monday, 6=Sunday
         hour_start: Optional[int] = None,
         hour_end: Optional[int] = None,
@@ -350,6 +381,11 @@ class AdvancedAnalyticsEngine:
         param_count = 2
         
         context_info = {}
+        
+        if brand_id:
+            param_count += 1
+            where_clauses.append(f"st.brand_id = ${param_count}")
+            params.append(brand_id)
         
         if weekday is not None:
             param_count += 1
@@ -396,6 +432,7 @@ class AdvancedAnalyticsEngine:
         FROM product_sales ps
         JOIN products p ON p.id = ps.product_id
         JOIN sales s ON s.id = ps.sale_id
+        INNER JOIN stores st ON s.store_id = st.id
         LEFT JOIN categories c ON c.id = p.category_id
         WHERE {where_clause}
         GROUP BY p.id, p.name, c.name
@@ -430,6 +467,7 @@ class AdvancedAnalyticsEngine:
         self,
         start_date: date,
         end_date: date,
+        brand_id: Optional[int] = None,
         store_ids: Optional[list[int]] = None,
         channel_ids: Optional[list[int]] = None
     ) -> list[SalesHeatmapCell]:
@@ -437,21 +475,26 @@ class AdvancedAnalyticsEngine:
         Get sales heatmap (weekday x hour)
         """
         where_clauses = [
-            "created_at >= $1",
-            "created_at < $2",
-            "sale_status_desc = 'COMPLETED'"
+            "s.created_at >= $1",
+            "s.created_at < $2",
+            "s.sale_status_desc = 'COMPLETED'"
         ]
         params = [start_date, end_date + timedelta(days=1)]
         param_count = 2
         
+        if brand_id:
+            param_count += 1
+            where_clauses.append(f"st.brand_id = ${param_count}")
+            params.append(brand_id)
+        
         if store_ids:
             param_count += 1
-            where_clauses.append(f"store_id = ANY(${param_count})")
+            where_clauses.append(f"s.store_id = ANY(${param_count})")
             params.append(store_ids)
         
         if channel_ids:
             param_count += 1
-            where_clauses.append(f"channel_id = ANY(${param_count})")
+            where_clauses.append(f"s.channel_id = ANY(${param_count})")
             params.append(channel_ids)
         
         where_clause = " AND ".join(where_clauses)
@@ -460,12 +503,13 @@ class AdvancedAnalyticsEngine:
         
         query = f"""
         SELECT 
-            EXTRACT(DOW FROM created_at)::INT as weekday,
-            EXTRACT(HOUR FROM created_at)::INT as hour,
+            EXTRACT(DOW FROM s.created_at)::INT as weekday,
+            EXTRACT(HOUR FROM s.created_at)::INT as hour,
             COUNT(*) as total_sales,
-            SUM(total_amount) as total_revenue,
-            AVG(total_amount) as avg_ticket
-        FROM sales
+            SUM(s.total_amount) as total_revenue,
+            AVG(s.total_amount) as avg_ticket
+        FROM sales s
+        INNER JOIN stores st ON s.store_id = st.id
         WHERE {where_clause}
         GROUP BY weekday, hour
         ORDER BY weekday, hour

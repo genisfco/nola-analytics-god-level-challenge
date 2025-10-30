@@ -1,38 +1,70 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { AnalyticsAPI } from '@/lib/api'
+import { useApi } from '@/hooks/useApi'
+import { useBrand } from '@/contexts/BrandContext'
 import { getDefaultDateRange, formatCurrency, formatNumber, formatPercent } from '@/lib/utils'
 import { KPICard } from './KPICard'
 import { DateFilter } from '../filters/DateFilter'
+import { StoreFilter } from '../filters/StoreFilter'
 import { SalesTrendChart } from '../charts/SalesTrendChart'
 import { ChannelChart } from '../charts/ChannelChart'
 import { DollarSign, ShoppingCart, Users, TrendingUp, XCircle, CheckCircle } from 'lucide-react'
 
 export function Dashboard() {
   const [dateRange, setDateRange] = useState(getDefaultDateRange())
+  const { fetchApi } = useApi()
+  const { brandId } = useBrand()
 
   const { data: overview, isLoading: overviewLoading } = useQuery({
-    queryKey: ['overview', dateRange],
-    queryFn: () => AnalyticsAPI.getOverview(dateRange),
+    queryKey: ['overview', dateRange, brandId],
+    queryFn: () => fetchApi('/overview', {
+      start_date: dateRange.startDate,
+      end_date: dateRange.endDate,
+      store_ids: dateRange.storeIds,
+      channel_ids: dateRange.channelIds,
+    }),
+    enabled: !!brandId,
   })
 
   const { data: trend, isLoading: trendLoading } = useQuery({
-    queryKey: ['trend', dateRange],
-    queryFn: () => AnalyticsAPI.getSalesTrend(dateRange),
+    queryKey: ['trend', dateRange, brandId],
+    queryFn: () => fetchApi('/sales/trend', {
+      start_date: dateRange.startDate,
+      end_date: dateRange.endDate,
+      store_ids: dateRange.storeIds,
+      channel_ids: dateRange.channelIds,
+    }),
+    enabled: !!brandId,
   })
 
   const { data: channels, isLoading: channelsLoading } = useQuery({
-    queryKey: ['channels', dateRange],
-    queryFn: () => AnalyticsAPI.getChannelMetrics(dateRange),
+    queryKey: ['channels', dateRange, brandId],
+    queryFn: () => fetchApi('/channels', {
+      start_date: dateRange.startDate,
+      end_date: dateRange.endDate,
+      store_ids: dateRange.storeIds,
+    }),
+    enabled: !!brandId,
   })
 
   const { data: products } = useQuery({
-    queryKey: ['products', dateRange],
-    queryFn: () => AnalyticsAPI.getTopProducts({ ...dateRange, limit: 5 }),
+    queryKey: ['products', dateRange, brandId],
+    queryFn: () => fetchApi('/products/top', {
+      start_date: dateRange.startDate,
+      end_date: dateRange.endDate,
+      limit: 5,
+      store_ids: dateRange.storeIds,
+      channel_ids: dateRange.channelIds,
+    }),
+    enabled: !!brandId,
   })
 
   const handleDateChange = (startDate: string, endDate: string) => {
-    setDateRange({ startDate, endDate })
+    setDateRange({ ...dateRange, startDate, endDate })
+  }
+
+  const handleStoreFilter = (storeIds: number[]) => {
+    setDateRange({ ...dateRange, storeIds })
   }
 
   const metrics = overview?.metrics
@@ -42,11 +74,15 @@ export function Dashboard() {
       <div className="container mx-auto px-6 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
           {/* Filtros */}
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-1 space-y-4">
             <DateFilter
               startDate={dateRange.startDate}
               endDate={dateRange.endDate}
               onChange={handleDateChange}
+            />
+            <StoreFilter
+              onApply={handleStoreFilter}
+              initialStores={dateRange.storeIds}
             />
           </div>
 

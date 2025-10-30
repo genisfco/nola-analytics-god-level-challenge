@@ -31,6 +31,7 @@ def get_advanced_engine(db: Database = Depends(get_db)) -> AdvancedAnalyticsEngi
 async def get_delivery_performance(
     start_date: date = Query(..., description="Start date (YYYY-MM-DD)"),
     end_date: date = Query(..., description="End date (YYYY-MM-DD)"),
+    brand_id: Optional[int] = Query(None, description="Brand ID to filter by owner"),
     store_ids: Optional[str] = Query(None, description="Comma-separated store IDs"),
     engine: AdvancedAnalyticsEngine = Depends(get_advanced_engine)
 ):
@@ -49,6 +50,7 @@ async def get_delivery_performance(
     overall, by_region, trend = await engine.get_delivery_performance(
         start_date=start_date,
         end_date=end_date,
+        brand_id=brand_id,
         store_ids=store_ids_list
     )
     
@@ -71,6 +73,7 @@ async def get_delivery_performance(
 async def get_customer_rfm(
     start_date: date = Query(..., description="Start date (YYYY-MM-DD)"),
     end_date: date = Query(..., description="End date (YYYY-MM-DD)"),
+    brand_id: Optional[int] = Query(None, description="Brand ID to filter by owner"),
     reference_date: Optional[date] = Query(None, description="Reference date for recency calculation"),
     engine: AdvancedAnalyticsEngine = Depends(get_advanced_engine)
 ):
@@ -86,6 +89,7 @@ async def get_customer_rfm(
     customers = await engine.get_customer_rfm(
         start_date=start_date,
         end_date=end_date,
+        brand_id=brand_id,
         reference_date=reference_date
     )
     
@@ -110,6 +114,7 @@ async def get_customer_rfm(
 async def get_churn_risk_customers(
     min_purchases: int = Query(3, ge=1, description="Minimum number of purchases"),
     days_inactive: int = Query(30, ge=1, description="Days since last purchase"),
+    brand_id: Optional[int] = Query(None, description="Brand ID to filter by owner"),
     limit: int = Query(100, ge=1, le=500, description="Maximum number of customers"),
     engine: AdvancedAnalyticsEngine = Depends(get_advanced_engine)
 ):
@@ -126,6 +131,7 @@ async def get_churn_risk_customers(
     customers = await engine.get_churn_risk_customers(
         min_purchases=min_purchases,
         days_inactive=days_inactive,
+        brand_id=brand_id,
         limit=limit
     )
     
@@ -150,6 +156,7 @@ async def get_churn_risk_customers(
 async def get_products_by_context(
     start_date: date = Query(..., description="Start date (YYYY-MM-DD)"),
     end_date: date = Query(..., description="End date (YYYY-MM-DD)"),
+    brand_id: Optional[int] = Query(None, description="Brand ID to filter by owner"),
     weekday: Optional[int] = Query(None, ge=0, le=6, description="Weekday (0=Monday, 6=Sunday)"),
     hour_start: Optional[int] = Query(None, ge=0, le=23, description="Start hour (0-23)"),
     hour_end: Optional[int] = Query(None, ge=0, le=23, description="End hour (0-23)"),
@@ -173,6 +180,7 @@ async def get_products_by_context(
     products = await engine.get_products_by_context(
         start_date=start_date,
         end_date=end_date,
+        brand_id=brand_id,
         weekday=weekday,
         hour_start=hour_start,
         hour_end=hour_end,
@@ -209,6 +217,7 @@ async def get_products_by_context(
 async def get_sales_heatmap(
     start_date: date = Query(..., description="Start date (YYYY-MM-DD)"),
     end_date: date = Query(..., description="End date (YYYY-MM-DD)"),
+    brand_id: Optional[int] = Query(None, description="Brand ID to filter by owner"),
     store_ids: Optional[str] = Query(None, description="Comma-separated store IDs"),
     channel_ids: Optional[str] = Query(None, description="Comma-separated channel IDs"),
     engine: AdvancedAnalyticsEngine = Depends(get_advanced_engine)
@@ -227,6 +236,7 @@ async def get_sales_heatmap(
     heatmap = await engine.get_sales_heatmap(
         start_date=start_date,
         end_date=end_date,
+        brand_id=brand_id,
         store_ids=store_ids_list,
         channel_ids=channel_ids_list
     )

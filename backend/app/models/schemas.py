@@ -128,6 +128,40 @@ class StoreMetrics(BaseModel):
         }
 
 
+class Brand(BaseModel):
+    """Brand (owner/proprietário) information"""
+    id: int
+    name: str
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "id": 1,
+                "name": "Maria - Burguer Boutique"
+            }
+        }
+
+
+class Store(BaseModel):
+    """Store information"""
+    id: int
+    name: str
+    city: Optional[str]
+    state: Optional[str]
+    is_active: bool
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "id": 1,
+                "name": "Restaurante Centro - São Paulo",
+                "city": "São Paulo",
+                "state": "SP",
+                "is_active": True
+            }
+        }
+
+
 class SalesTrend(BaseModel):
     """Sales trend over time"""
     date: date
@@ -234,6 +268,47 @@ class OverviewResponse(BaseModel):
                     "end_date": "2024-01-31",
                     "days": 31
                 }
+            }
+        }
+
+
+class BrandsListResponse(BaseModel):
+    """Brands list response"""
+    brands: list[Brand]
+    total: int
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "brands": [
+                    {"id": 1, "name": "Maria - Burguer Boutique"},
+                    {"id": 2, "name": "João - Pizza & Cia"}
+                ],
+                "total": 7
+            }
+        }
+
+
+class StoresListResponse(BaseModel):
+    """Stores list response"""
+    stores: list[Store]
+    total: int
+    brand_id: int
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "stores": [
+                    {
+                        "id": 1,
+                        "name": "Restaurante Centro - São Paulo",
+                        "city": "São Paulo",
+                        "state": "SP",
+                        "is_active": True
+                    }
+                ],
+                "total": 3,
+                "brand_id": 1
             }
         }
 

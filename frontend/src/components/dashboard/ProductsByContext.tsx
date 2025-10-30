@@ -1,8 +1,20 @@
 import { useQuery } from '@tanstack/react-query'
 import { Package, TrendingUp } from 'lucide-react'
-import { AnalyticsAPI, ProductByContext } from '@/lib/api'
+import { useApi } from '@/hooks/useApi'
+import { useBrand } from '@/contexts/BrandContext'
+import { ProductByContext } from '@/lib/api'
 import { formatCurrency, formatNumber } from '@/lib/utils'
 import { ContextFilters } from '../filters/AdvancedFilters'
+
+interface ProductsByContextResponse {
+  products: ProductByContext[]
+  total_products: number
+  context: Record<string, any>
+  period: {
+    start_date: string
+    end_date: string
+  }
+}
 
 interface ProductsByContextProps {
   startDate: string
@@ -11,24 +23,27 @@ interface ProductsByContextProps {
 }
 
 export function ProductsByContext({ startDate, endDate, contextFilters }: ProductsByContextProps) {
+  const { fetchApi } = useApi()
+  const { brandId } = useBrand()
+
   const hasContextFilters = 
     contextFilters.weekday !== undefined || 
     contextFilters.hourStart !== undefined || 
     contextFilters.channelId !== undefined
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['products-context', startDate, endDate, contextFilters],
+  const { data, isLoading } = useQuery<ProductsByContextResponse>({
+    queryKey: ['products-context', startDate, endDate, contextFilters, brandId],
     queryFn: () =>
-      AnalyticsAPI.getProductsByContext({
-        startDate,
-        endDate,
+      fetchApi<ProductsByContextResponse>('/products/by-context', {
+        start_date: startDate,
+        end_date: endDate,
         weekday: contextFilters.weekday,
-        hourStart: contextFilters.hourStart,
-        hourEnd: contextFilters.hourEnd,
-        channelId: contextFilters.channelId,
+        hour_start: contextFilters.hourStart,
+        hour_end: contextFilters.hourEnd,
+        channel_id: contextFilters.channelId,
         limit: 10,
       }),
-    enabled: hasContextFilters,
+    enabled: hasContextFilters && !!brandId,
   })
 
   if (!hasContextFilters) {
@@ -37,17 +52,14 @@ export function ProductsByContext({ startDate, endDate, contextFilters }: Produc
         <div className="flex items-center gap-2 mb-4">
           <Package className="w-5 h-5 text-primary" />
           <h3 className="text-lg font-semibold text-card-foreground">
-            Produtos por Contexto
+            Produtos mais vendidos
           </h3>
         </div>
         <div className="text-center py-8">
           <Package className="w-12 h-12 text-muted-foreground mx-auto mb-2" />
           <p className="text-muted-foreground mb-2">
             Selecione filtros contextuais para ver os produtos mais vendidos
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Exemplo: "Qual produto vende mais na quinta à noite no iFood?"
-          </p>
+          </p>          
         </div>
       </div>
     )
@@ -67,7 +79,7 @@ export function ProductsByContext({ startDate, endDate, contextFilters }: Produc
         <div className="flex items-center gap-2 mb-4">
           <Package className="w-5 h-5 text-primary" />
           <h3 className="text-lg font-semibold text-card-foreground">
-            Produtos por Contexto
+            Produtos mais vendidos
           </h3>
         </div>
         <div className="text-center py-8">
