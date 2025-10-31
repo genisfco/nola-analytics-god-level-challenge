@@ -58,6 +58,9 @@ export interface DeliveryPerformance {
   total_deliveries: number;
   on_time_deliveries: number;
   on_time_rate: number;
+  total_orders?: number;
+  cancelled_orders?: number;
+  cancellation_rate?: number;
 }
 
 export interface DeliveryByRegion {

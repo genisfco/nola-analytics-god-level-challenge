@@ -1,6 +1,6 @@
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
-import { format, subDays } from 'date-fns'
+import { format, subDays, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
 export function cn(...inputs: ClassValue[]) {
@@ -23,12 +23,14 @@ export function formatPercent(value: number): string {
 }
 
 export function formatDate(dateString: string): string {
-  return format(new Date(dateString), 'dd/MM/yyyy', { locale: ptBR })
+  // Usar parseISO para evitar problemas de timezone
+  // parseISO interpreta a string como data local ao invés de UTC
+  return format(parseISO(dateString), 'dd/MM/yyyy', { locale: ptBR })
 }
 
 export function getDefaultDateRange() {
-  const endDate = new Date('2025-05-31')
-  const startDate = new Date('2025-05-02')
+  const endDate = new Date()
+  const startDate = subDays(endDate, 6) // 7 dias no total (hoje + 6 dias anteriores)
   
   return {
     startDate: format(startDate, 'yyyy-MM-dd'),

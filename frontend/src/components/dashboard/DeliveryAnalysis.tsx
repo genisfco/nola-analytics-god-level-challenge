@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { Truck, Clock, MapPin, TrendingDown, TrendingUp } from 'lucide-react'
+import { Truck, Clock, MapPin, TrendingDown, TrendingUp, AlertCircle } from 'lucide-react'
 import { useApi } from '@/hooks/useApi'
 import { useBrand } from '@/contexts/BrandContext'
 import { DeliveryPerformance, DeliveryByRegion } from '@/lib/api'
@@ -33,6 +33,7 @@ export function DeliveryAnalysis({ startDate, endDate, contextFilters, storeIds 
     queryFn: () => fetchApi<DeliveryPerformanceResponse>('/delivery/performance', {
       start_date: startDate,
       end_date: endDate,
+      brand_id: brandId,
       weekday: contextFilters?.weekday,
       hour_start: contextFilters?.hourStart,
       hour_end: contextFilters?.hourEnd,
@@ -100,7 +101,7 @@ export function DeliveryAnalysis({ startDate, endDate, contextFilters, storeIds 
           )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           <div className="p-4 bg-primary/5 border-l-4 border-primary rounded-lg">
             <div className="flex items-center gap-2 mb-1">
               <Clock className="w-4 h-4 text-primary" />
@@ -148,6 +149,21 @@ export function DeliveryAnalysis({ startDate, endDate, contextFilters, storeIds 
             </p>
             <p className="text-xs text-muted-foreground mt-1">Produção + Entrega</p>
           </div>
+
+          {overall.cancellation_rate !== undefined && overall.cancellation_rate > 0 && (
+            <div className="p-4 bg-red-50 dark:bg-red-950/20 border-l-4 border-red-500 rounded-lg">
+              <div className="flex items-center gap-2 mb-1">
+                <AlertCircle className="w-4 h-4 text-red-600" />
+                <p className="text-sm font-medium text-muted-foreground">Taxa de Cancelamento</p>
+              </div>
+              <p className="text-2xl font-bold text-card-foreground">
+                {overall.cancellation_rate.toFixed(1)}%
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {formatNumber(overall.cancelled_orders || 0)} cancelados de {formatNumber(overall.total_orders || 0)}
+              </p>
+            </div>
+          )}
         </div>
       </div>
 

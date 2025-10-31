@@ -391,6 +391,10 @@ class DeliveryPerformance(BaseModel):
     total_deliveries: int
     on_time_deliveries: int = Field(..., description="Deliveries under 45 minutes")
     on_time_rate: float = Field(..., description="On-time delivery rate (%)")
+    # Cancellation metrics
+    total_orders: int = Field(default=0, description="Total orders (completed + cancelled)")
+    cancelled_orders: int = Field(default=0, description="Number of cancelled orders")
+    cancellation_rate: float = Field(default=0.0, description="Cancellation rate (%)")
     
     class Config:
         json_schema_extra = {
@@ -399,7 +403,10 @@ class DeliveryPerformance(BaseModel):
                 "avg_production_time": 1200.3,
                 "total_deliveries": 45230,
                 "on_time_deliveries": 38450,
-                "on_time_rate": 85.0
+                "on_time_rate": 85.0,
+                "total_orders": 50000,
+                "cancelled_orders": 4770,
+                "cancellation_rate": 9.54
             }
         }
 

@@ -32,7 +32,11 @@ class AdvancedAnalyticsEngine:
         start_date: date,
         end_date: date,
         brand_id: Optional[int] = None,
-        store_ids: Optional[list[int]] = None
+        store_ids: Optional[list[int]] = None,
+        weekday: Optional[int] = None,
+        hour_start: Optional[int] = None,
+        hour_end: Optional[int] = None,
+        channel_id: Optional[int] = None
     ) -> tuple[DeliveryPerformance, list[DeliveryByRegion], list[DeliveryTrend]]:
         """
         Get delivery performance metrics
@@ -56,31 +60,110 @@ class AdvancedAnalyticsEngine:
             where_clauses.append(f"s.store_id = ANY(${param_count})")
             params.append(store_ids)
         
+        if weekday is not None:
+            param_count += 1
+            where_clauses.append(f"EXTRACT(DOW FROM s.created_at)::INT = ${param_count}")
+            params.append(weekday)
+        
+        if hour_start is not None:
+            param_count += 1
+            where_clauses.append(f"EXTRACT(HOUR FROM s.created_at)::INT >= ${param_count}")
+            params.append(hour_start)
+        
+        if hour_end is not None:
+            param_count += 1
+            where_clauses.append(f"EXTRACT(HOUR FROM s.created_at)::INT < ${param_count}")
+            params.append(hour_end)
+        
+        if channel_id is not None:
+            param_count += 1
+            where_clauses.append(f"s.channel_id = ${param_count}")
+            params.append(channel_id)
+        
         where_clause = " AND ".join(where_clauses)
         
-        # Overall performance
+        # Build WHERE clause for all orders (including cancellations)
+        where_all_clauses = [
+            "s.created_at >= $1",
+            "s.created_at < $2"
+        ]
+        param_count_all = 2
+        params_all = [start_date, end_date + timedelta(days=1)]
+        
+        if brand_id:
+            param_count_all += 1
+            where_all_clauses.append(f"st.brand_id = ${param_count_all}")
+            params_all.append(brand_id)
+        
+        if store_ids:
+            param_count_all += 1
+            where_all_clauses.append(f"s.store_id = ANY(${param_count_all})")
+            params_all.append(store_ids)
+        
+        if weekday is not None:
+            param_count_all += 1
+            where_all_clauses.append(f"EXTRACT(DOW FROM s.created_at)::INT = ${param_count_all}")
+            params_all.append(weekday)
+        
+        if hour_start is not None:
+            param_count_all += 1
+            where_all_clauses.append(f"EXTRACT(HOUR FROM s.created_at)::INT >= ${param_count_all}")
+            params_all.append(hour_start)
+        
+        if hour_end is not None:
+            param_count_all += 1
+            where_all_clauses.append(f"EXTRACT(HOUR FROM s.created_at)::INT < ${param_count_all}")
+            params_all.append(hour_end)
+        
+        if channel_id is not None:
+            param_count_all += 1
+            where_all_clauses.append(f"s.channel_id = ${param_count_all}")
+            params_all.append(channel_id)
+        
+        where_all_clause = " AND ".join(where_all_clauses)
+        
+        # Overall performance with cancellation metrics
         overall_query = f"""
+        WITH delivery_metrics AS (
+            SELECT 
+                AVG(s.delivery_seconds) as avg_delivery_time,
+                AVG(s.production_seconds) as avg_production_time,
+                COUNT(*) as total_deliveries,
+                COUNT(*) FILTER (WHERE (s.delivery_seconds + s.production_seconds) <= 2700) as on_time_deliveries
+            FROM sales s
+            INNER JOIN stores st ON s.store_id = st.id
+            JOIN delivery_sales ds ON ds.sale_id = s.id
+            WHERE {where_clause}
+        ),
+        cancellation_metrics AS (
+            SELECT 
+                COUNT(*) as total_orders,
+                COUNT(*) FILTER (WHERE s.sale_status_desc IN ('CANCELLED', 'CANCELED')) as cancelled_orders
+            FROM sales s
+            INNER JOIN stores st ON s.store_id = st.id
+            WHERE {where_all_clause}
+        )
         SELECT 
-            AVG(s.delivery_seconds) as avg_delivery_time,
-            AVG(s.production_seconds) as avg_production_time,
-            COUNT(*) as total_deliveries,
-            COUNT(*) FILTER (WHERE (s.delivery_seconds + s.production_seconds) <= 2700) as on_time_deliveries
-        FROM sales s
-        INNER JOIN stores st ON s.store_id = st.id
-        JOIN delivery_sales ds ON ds.sale_id = s.id
-        WHERE {where_clause}
+            dm.*,
+            COALESCE(cm.total_orders, 0) as total_orders,
+            COALESCE(cm.cancelled_orders, 0) as cancelled_orders
+        FROM delivery_metrics dm, cancellation_metrics cm
         """
         
         overall = await self.db.fetch_one(overall_query, *params)
         
         on_time_rate = (overall['on_time_deliveries'] / overall['total_deliveries'] * 100) if overall['total_deliveries'] > 0 else 0.0
+        cancellation_rate = (overall['cancelled_orders'] / overall['total_orders'] * 100) if overall['total_orders'] > 0 else 0.0
         
         overall_metrics = DeliveryPerformance(
             avg_delivery_time=float(overall['avg_delivery_time']) if overall['avg_delivery_time'] else 0.0,
             avg_production_time=float(overall['avg_production_time']) if overall['avg_production_time'] else 0.0,
             total_deliveries=overall['total_deliveries'],
             on_time_deliveries=overall['on_time_deliveries'],
-            on_time_rate=round(on_time_rate, 2)
+            on_time_rate=round(on_time_rate, 2),
+            total_orders=overall['total_orders'],
+            cancelled_orders=overall['cancelled_orders'],
+            cancellation_rate=round(cancellation_rate, 2)
         )
         
         # By region

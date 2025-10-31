@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { getDefaultDateRange } from '@/lib/utils'
 import { DateFilter } from '../filters/DateFilter'
 import { StoreFilter } from '../filters/StoreFilter'
@@ -15,6 +15,7 @@ interface AdvancedDashboardProps {
 export function AdvancedDashboard({ insightContext }: AdvancedDashboardProps) {
   const [dateRange, setDateRange] = useState(getDefaultDateRange())
   const [contextFilters, setContextFilters] = useState<ContextFilters>({})
+  const deliveryRef = useRef<HTMLDivElement>(null)
   
   // Verificar se os filtros atuais são diferentes dos filtros do insight original
   const showInsightBadge = useMemo(() => {
@@ -68,6 +69,11 @@ export function AdvancedDashboard({ insightContext }: AdvancedDashboardProps) {
       if (insightContext.contextFilters) {
         setContextFilters(insightContext.contextFilters)
       }
+      
+      // Scroll para o DeliveryAnalysis quando veio de um insight
+      setTimeout(() => {
+        deliveryRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 100)
     }
   }, [insightContext])
 
@@ -127,8 +133,7 @@ export function AdvancedDashboard({ insightContext }: AdvancedDashboardProps) {
         </div>
 
         {/* Análise de Performance de Entrega */}
-        <div className="mb-8">
-          
+        <div ref={deliveryRef} className="mb-8">
           <DeliveryAnalysis
             startDate={dateRange.startDate}
             endDate={dateRange.endDate}
