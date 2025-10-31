@@ -1,14 +1,27 @@
 import { AlertCircle, TrendingUp, AlertTriangle, CheckCircle, ArrowRight, RefreshCw } from 'lucide-react'
 import { Insight, InsightPriority } from '@/types/insights'
 import { formatCurrency } from '@/lib/utils'
+import type { InsightContext } from '../../App'
 
 interface InsightsPanelProps {
   insights?: Insight[]
   isLoading?: boolean
   lastUpdate?: Date
+  currentDateRange?: {
+    startDate: string
+    endDate: string
+    storeIds?: number[]
+  }
+  onNavigateToDetail?: (context: InsightContext) => void
 }
 
-export function InsightsPanel({ insights = [], isLoading = false, lastUpdate }: InsightsPanelProps) {
+export function InsightsPanel({ 
+  insights = [], 
+  isLoading = false, 
+  lastUpdate,
+  currentDateRange,
+  onNavigateToDetail
+}: InsightsPanelProps) {
   if (isLoading) {
     return (
       <div className="bg-card rounded-lg shadow-sm border border-border p-6 mb-8">
@@ -70,7 +83,12 @@ export function InsightsPanel({ insights = [], isLoading = false, lastUpdate }: 
 
       <div className="space-y-4">
         {insights.map((insight) => (
-          <InsightCard key={insight.id} insight={insight} />
+          <InsightCard 
+            key={insight.id} 
+            insight={insight}
+            currentDateRange={currentDateRange}
+            onNavigateToDetail={onNavigateToDetail}
+          />
         ))}
       </div>
     </div>
@@ -79,10 +97,60 @@ export function InsightsPanel({ insights = [], isLoading = false, lastUpdate }: 
 
 interface InsightCardProps {
   insight: Insight
+  currentDateRange?: {
+    startDate: string
+    endDate: string
+    storeIds?: number[]
+  }
+  onNavigateToDetail?: (context: InsightContext) => void
 }
 
-function InsightCard({ insight }: InsightCardProps) {
+function InsightCard({ insight, currentDateRange, onNavigateToDetail }: InsightCardProps) {
   const { icon: Icon, color, bgColor, borderColor } = getPriorityStyle(insight.priority)
+  
+  // Função para converter contexto do insight em filtros
+  const handleNavigateToDetail = () => {
+    if (!onNavigateToDetail || !currentDateRange) return
+
+    // Mapear dia da semana de português para número (DOW do PostgreSQL: 0=domingo, 6=sábado)
+    const weekdayMap: Record<string, number> = {
+      'domingo': 0,
+      'segunda-feira': 1,
+      'terça-feira': 2,
+      'quarta-feira': 3,
+      'quinta-feira': 4,
+      'sexta-feira': 5,
+      'sábado': 6
+    }
+
+    // Pegar primeiro dia da semana se houver
+    const weekday = insight.context.affected_days?.[0]
+      ? weekdayMap[insight.context.affected_days[0].toLowerCase()]
+      : undefined
+
+    // Pegar primeira hora e criar range de 1 hora
+    const hour = insight.context.affected_hours?.[0]
+    const hourStart = hour !== undefined ? hour : undefined
+    const hourEnd = hour !== undefined ? hour + 1 : undefined
+
+    const context: InsightContext = {
+      dateRange: {
+        startDate: currentDateRange.startDate,
+        endDate: currentDateRange.endDate
+      },
+      storeIds: insight.context.affected_stores && insight.context.affected_stores.length > 0
+        ? insight.context.affected_stores
+        : undefined,
+      contextFilters: {
+        weekday,
+        hourStart,
+        hourEnd,
+        channelId: insight.context.affected_channels?.[0]
+      }
+    }
+
+    onNavigateToDetail(context)
+  }
   
   return (
     <div 
@@ -160,14 +228,14 @@ function InsightCard({ insight }: InsightCardProps) {
           )}
 
           {/* Action Link */}
-          {insight.recommendation.link_to && (
-            <a
-              href={insight.recommendation.link_to}
-              className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+          {onNavigateToDetail && (
+            <button
+              onClick={handleNavigateToDetail}
+              className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline cursor-pointer transition-colors"
             >
               Ver Análise Detalhada
               <ArrowRight className="w-4 h-4" />
-            </a>
+            </button>
           )}
         </div>
       </div>

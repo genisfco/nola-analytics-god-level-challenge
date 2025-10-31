@@ -1,6 +1,6 @@
 import { format } from 'date-fns'
 import { Calendar } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 interface DateFilterProps {
   startDate: string
@@ -11,6 +11,16 @@ interface DateFilterProps {
 export function DateFilter({ startDate, endDate, onChange }: DateFilterProps) {
   const [localStart, setLocalStart] = useState(startDate)
   const [localEnd, setLocalEnd] = useState(endDate)
+
+  // Sincronizar quando props mudarem (ex: vindo de insight)
+  useEffect(() => {
+    setLocalStart(startDate)
+    setLocalEnd(endDate)
+    // Aplicar automaticamente quando as props mudarem (vindo de insight)
+    // Isso garante que os filtros sejam aplicados sem precisar clicar em "Aplicar"
+    onChange(startDate, endDate)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startDate, endDate])
 
   const handleApply = () => {
     onChange(localStart, localEnd)

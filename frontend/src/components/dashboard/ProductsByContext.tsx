@@ -94,7 +94,7 @@ export function ProductsByContext({ startDate, endDate, contextFilters, storeIds
   }
 
   const products: ProductByContext[] = data.products
-  const weekdayNames = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo']
+  const weekdayNames = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
   const channelNames: Record<number, string> = {
     1: 'Presencial',
     2: 'iFood',

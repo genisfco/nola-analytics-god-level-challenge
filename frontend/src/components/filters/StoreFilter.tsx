@@ -21,6 +21,23 @@ export function StoreFilter({ onApply, initialStores = [] }: StoreFilterProps) {
   const [storeOptions, setStoreOptions] = useState<Store[]>([])
   const [loading, setLoading] = useState(true)
 
+  /* // Sincronizar quando initialStores mudarem (ex: vindo de insight)
+  useEffect(() => {
+    if (initialStores) {
+      // Só atualiza se for diferente do estado atual
+      const currentIds = selectedStores.sort().join(',')
+      const newIds = initialStores.sort().join(',')
+      if (currentIds !== newIds) {
+        setSelectedStores(initialStores)
+        // Aplicar automaticamente quando vier de insight (e não for array vazio)
+        if (initialStores.length > 0) {
+          onApply(initialStores)
+        }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialStores]) */
+
   // Fetch stores when brand changes
   useEffect(() => {
     const fetchStores = async () => {

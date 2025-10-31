@@ -56,7 +56,7 @@ export function DeliveryAnalysis({ startDate, endDate, contextFilters, storeIds 
   const regions: DeliveryByRegion[] = data.by_region || []
 
   // Build filter labels
-  const weekdayNames = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo']
+  const weekdayNames = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
   const channelNames: Record<number, string> = {
     1: 'Presencial',
     2: 'iFood',

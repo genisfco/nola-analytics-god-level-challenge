@@ -1,8 +1,9 @@
 import { Filter } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 interface AdvancedFiltersProps {
   onApply: (filters: ContextFilters) => void
+  initialFilters?: ContextFilters
 }
 
 export interface ContextFilters {
@@ -13,13 +14,13 @@ export interface ContextFilters {
 }
 
 const weekdayOptions = [
-  { value: 0, label: 'Segunda' },
-  { value: 1, label: 'Terça' },
-  { value: 2, label: 'Quarta' },
-  { value: 3, label: 'Quinta' },
-  { value: 4, label: 'Sexta' },
-  { value: 5, label: 'Sábado' },
-  { value: 6, label: 'Domingo' },
+  { value: 0, label: 'Domingo' },
+  { value: 1, label: 'Segunda' },
+  { value: 2, label: 'Terça' },
+  { value: 3, label: 'Quarta' },
+  { value: 4, label: 'Quinta' },
+  { value: 5, label: 'Sexta' },
+  { value: 6, label: 'Sábado' },
 ]
 
 const channelOptions = [
@@ -38,12 +39,77 @@ const hourRanges = [
   { start: 0, end: 6, label: 'Madrugada (0h-6h)' },
 ]
 
-export function AdvancedFilters({ onApply }: AdvancedFiltersProps) {
-  const [weekday, setWeekday] = useState<number | undefined>()
-  const [hourRange, setHourRange] = useState<{ start: number; end: number } | undefined>()
-  const [channelId, setChannelId] = useState<number | undefined>()
+export function AdvancedFilters({ onApply, initialFilters }: AdvancedFiltersProps) {
+  const [weekday, setWeekday] = useState<number | undefined>(initialFilters?.weekday)
+  const [hourRange, setHourRange] = useState<{ start: number; end: number } | undefined>(
+    initialFilters?.hourStart !== undefined && initialFilters?.hourEnd !== undefined
+      ? { start: initialFilters.hourStart, end: initialFilters.hourEnd }
+      : undefined
+  )
+  const [channelId, setChannelId] = useState<number | undefined>(initialFilters?.channelId)
+  
+  // Usar useRef para rastrear se já aplicamos os filtros iniciais
+  const hasAppliedInitialFilters = useRef(false)
+  const previousInitialFilters = useRef<string>('')
+
+  // Criar uma chave única para comparar initialFilters
+  const getFiltersKey = (filters?: ContextFilters) => {
+    if (!filters) return ''
+    return JSON.stringify({
+      weekday: filters.weekday,
+      hourStart: filters.hourStart,
+      hourEnd: filters.hourEnd,
+      channelId: filters.channelId
+    })
+  }
+
+  // Aplicar filtros iniciais automaticamente quando receber (apenas uma vez)
+  useEffect(() => {
+    const currentKey = getFiltersKey(initialFilters)
+    const previousKey = previousInitialFilters.current
+
+    // Só aplica se os filtros realmente mudaram e ainda não foram aplicados
+    if (initialFilters && currentKey !== previousKey && currentKey !== '') {
+      const hasInitialFilters = 
+        initialFilters.weekday !== undefined ||
+        initialFilters.channelId !== undefined ||
+        (initialFilters.hourStart !== undefined && initialFilters.hourEnd !== undefined)
+      
+      if (hasInitialFilters && !hasAppliedInitialFilters.current) {
+        setWeekday(initialFilters.weekday)
+        setChannelId(initialFilters.channelId)
+        if (initialFilters.hourStart !== undefined && initialFilters.hourEnd !== undefined) {
+          setHourRange({ start: initialFilters.hourStart, end: initialFilters.hourEnd })
+        } else {
+          setHourRange(undefined)
+        }
+        
+        // Marcar como aplicado e atualizar a referência
+        hasAppliedInitialFilters.current = true
+        previousInitialFilters.current = currentKey
+        
+        // Aplicar os filtros apenas uma vez
+        onApply({
+          weekday: initialFilters.weekday,
+          hourStart: initialFilters.hourStart,
+          hourEnd: initialFilters.hourEnd,
+          channelId: initialFilters.channelId,
+        })
+      }
+    }
+    
+    // Reset quando initialFilters ficar vazio (usuário limpar filtros manualmente)
+    if (!initialFilters || currentKey === '') {
+      hasAppliedInitialFilters.current = false
+      previousInitialFilters.current = ''
+    }
+  }, [initialFilters, onApply])
 
   const handleApply = () => {
+    // Reset flag quando usuário aplicar manualmente
+    hasAppliedInitialFilters.current = false
+    previousInitialFilters.current = ''
+    
     onApply({
       weekday,
       hourStart: hourRange?.start,
@@ -53,6 +119,10 @@ export function AdvancedFilters({ onApply }: AdvancedFiltersProps) {
   }
 
   const handleClear = () => {
+    // Reset flag quando usuário limpar
+    hasAppliedInitialFilters.current = false
+    previousInitialFilters.current = ''
+    
     setWeekday(undefined)
     setHourRange(undefined)
     setChannelId(undefined)
@@ -94,7 +164,13 @@ export function AdvancedFilters({ onApply }: AdvancedFiltersProps) {
             Período do Dia
           </label>
           <select
-            value={hourRange ? `${hourRange.start}-${hourRange.end}` : ''}
+            value={
+              hourRange 
+                ? (hourRanges.some(r => r.start === hourRange.start && r.end === hourRange.end)
+                    ? `${hourRange.start}-${hourRange.end}`
+                    : '') 
+                : ''
+            }
             onChange={(e) => {
               if (!e.target.value) {
                 setHourRange(undefined)
@@ -112,6 +188,11 @@ export function AdvancedFilters({ onApply }: AdvancedFiltersProps) {
               </option>
             ))}
           </select>
+          {hourRange && !hourRanges.some(r => r.start === hourRange.start && r.end === hourRange.end) && (
+            <p className="text-xs text-primary mt-1">
+              ⏰ Filtro ativo: {hourRange.start}h - {hourRange.end}h
+            </p>
+          )}
         </div>
 
         {/* Channel Filter */}
@@ -163,7 +244,8 @@ export function AdvancedFilters({ onApply }: AdvancedFiltersProps) {
               )}
               {hourRange && (
                 <span className="inline-flex items-center px-2 py-1 bg-primary/10 text-primary text-xs rounded-md">
-                  {hourRanges.find((h) => h.start === hourRange.start)?.label}
+                  {hourRanges.find((h) => h.start === hourRange.start && h.end === hourRange.end)?.label 
+                    || `${hourRange.start}h - ${hourRange.end}h`}
                 </span>
               )}
               {channelId && (

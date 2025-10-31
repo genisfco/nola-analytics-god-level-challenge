@@ -11,8 +11,13 @@ import { ChannelChart } from '../charts/ChannelChart'
 import { InsightsPanel } from '../insights'
 import { DollarSign, ShoppingCart, Users, TrendingUp, XCircle, CheckCircle } from 'lucide-react'
 import type { InsightsResponse } from '@/types/insights'
+import type { InsightContext } from '../../App'
 
-export function Dashboard() {
+interface DashboardProps {
+  onNavigateToAdvanced?: (context: InsightContext) => void
+}
+
+export function Dashboard({ onNavigateToAdvanced }: DashboardProps) {
   const [dateRange, setDateRange] = useState(getDefaultDateRange())
   const { fetchApi } = useApi()
   const { brandId } = useBrand()
@@ -237,6 +242,8 @@ export function Dashboard() {
           insights={insights?.insights}
           isLoading={insightsLoading}
           lastUpdate={insights?.generated_at ? new Date(insights.generated_at) : undefined}
+          currentDateRange={dateRange}
+          onNavigateToDetail={onNavigateToAdvanced}
         />
       </div>
     </div>
