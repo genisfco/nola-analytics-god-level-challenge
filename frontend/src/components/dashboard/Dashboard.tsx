@@ -12,6 +12,29 @@ import { InsightsPanel } from '../insights'
 import { DollarSign, ShoppingCart, Users, TrendingUp, XCircle, CheckCircle } from 'lucide-react'
 import type { InsightsResponse } from '@/types/insights'
 import type { InsightContext } from '../../App'
+import type { OverviewMetrics, ProductRanking, ChannelMetrics, SalesTrend } from '@/lib/api'
+
+// Adicionar interfaces de resposta da API
+interface OverviewResponse {
+  metrics: OverviewMetrics
+  period: {
+    days: number
+    start_date: string
+    end_date: string
+  }
+}
+
+interface TrendResponse {
+  trend: SalesTrend[]
+}
+
+interface ChannelsResponse {
+  channels: ChannelMetrics[]
+}
+
+interface ProductsResponse {
+  products: ProductRanking[]
+}
 
 interface DashboardProps {
   onNavigateToAdvanced?: (context: InsightContext) => void
@@ -22,9 +45,9 @@ export function Dashboard({ onNavigateToAdvanced }: DashboardProps) {
   const { fetchApi } = useApi()
   const { brandId } = useBrand()
 
-  const { data: overview, isLoading: overviewLoading } = useQuery({
+  const { data: overview, isLoading: overviewLoading } = useQuery<OverviewResponse>({
     queryKey: ['overview', dateRange, brandId],
-    queryFn: () => fetchApi('/overview', {
+    queryFn: () => fetchApi<OverviewResponse>('/overview', {
       start_date: dateRange.startDate,
       end_date: dateRange.endDate,
       store_ids: dateRange.storeIds,
@@ -33,9 +56,9 @@ export function Dashboard({ onNavigateToAdvanced }: DashboardProps) {
     enabled: !!brandId,
   })
 
-  const { data: trend, isLoading: trendLoading } = useQuery({
+  const { data: trend, isLoading: trendLoading } = useQuery<TrendResponse>({
     queryKey: ['trend', dateRange, brandId],
-    queryFn: () => fetchApi('/sales/trend', {
+    queryFn: () => fetchApi<TrendResponse>('/sales/trend', {
       start_date: dateRange.startDate,
       end_date: dateRange.endDate,
       store_ids: dateRange.storeIds,
@@ -44,9 +67,9 @@ export function Dashboard({ onNavigateToAdvanced }: DashboardProps) {
     enabled: !!brandId,
   })
 
-  const { data: channels, isLoading: channelsLoading } = useQuery({
+  const { data: channels, isLoading: channelsLoading } = useQuery<ChannelsResponse>({
     queryKey: ['channels', dateRange, brandId],
-    queryFn: () => fetchApi('/channels', {
+    queryFn: () => fetchApi<ChannelsResponse>('/channels', {
       start_date: dateRange.startDate,
       end_date: dateRange.endDate,
       store_ids: dateRange.storeIds,
@@ -54,9 +77,9 @@ export function Dashboard({ onNavigateToAdvanced }: DashboardProps) {
     enabled: !!brandId,
   })
 
-  const { data: products } = useQuery({
+  const { data: products } = useQuery<ProductsResponse>({
     queryKey: ['products', dateRange, brandId],
-    queryFn: () => fetchApi('/products/top', {
+    queryFn: () => fetchApi<ProductsResponse>('/products/top', {
       start_date: dateRange.startDate,
       end_date: dateRange.endDate,
       limit: 5,
