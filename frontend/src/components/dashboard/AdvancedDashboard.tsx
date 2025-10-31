@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { getDefaultDateRange } from '@/lib/utils'
 import { DateFilter } from '../filters/DateFilter'
 import { StoreFilter } from '../filters/StoreFilter'
@@ -15,6 +15,39 @@ interface AdvancedDashboardProps {
 export function AdvancedDashboard({ insightContext }: AdvancedDashboardProps) {
   const [dateRange, setDateRange] = useState(getDefaultDateRange())
   const [contextFilters, setContextFilters] = useState<ContextFilters>({})
+  
+  // Verificar se os filtros atuais são diferentes dos filtros do insight original
+  const showInsightBadge = useMemo(() => {
+    if (!insightContext) return false
+    
+    // Comparar datas
+    const datesMatch = 
+      insightContext.dateRange?.startDate === dateRange.startDate &&
+      insightContext.dateRange?.endDate === dateRange.endDate
+    
+    // Comparar lojas (ordenar e comparar arrays)
+    const insightStores = (insightContext.storeIds || []).sort().join(',')
+    const currentStores = (dateRange.storeIds || []).sort().join(',')
+    const storesMatch = insightStores === currentStores
+    
+    // Comparar filtros contextuais
+    const insightFilters = JSON.stringify({
+      weekday: insightContext.contextFilters?.weekday,
+      hourStart: insightContext.contextFilters?.hourStart,
+      hourEnd: insightContext.contextFilters?.hourEnd,
+      channelId: insightContext.contextFilters?.channelId
+    })
+    const currentFilters = JSON.stringify({
+      weekday: contextFilters.weekday,
+      hourStart: contextFilters.hourStart,
+      hourEnd: contextFilters.hourEnd,
+      channelId: contextFilters.channelId
+    })
+    const filtersMatch = insightFilters === currentFilters
+    
+    // Badge só aparece se tudo ainda estiver igual ao insight original
+    return datesMatch && storesMatch && filtersMatch
+  }, [insightContext, dateRange, contextFilters])
 
   // Aplicar contexto do insight automaticamente
   useEffect(() => {
@@ -53,8 +86,8 @@ export function AdvancedDashboard({ insightContext }: AdvancedDashboardProps) {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-6 py-8">
-        {/* Badge se veio de insight */}
-        {insightContext && (
+        {/* Badge se veio de insight e filtros ainda são os mesmos */}
+        {showInsightBadge && (
           <div className="mb-6 p-4 bg-primary/10 border border-primary/20 rounded-lg">
             <p className="text-sm text-primary font-medium">
               🔍 Visualizando dados do insight detectado
