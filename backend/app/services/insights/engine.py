@@ -7,6 +7,7 @@ from app.core.database import Database
 from app.models.schemas import Insight, InsightsResponse
 
 from .cancellation_detector import CancellationDetector
+from .product_opportunity_detector import ProductOpportunityDetector
 
 
 class InsightsEngine:
@@ -44,8 +45,8 @@ class InsightsEngine:
         # 1. Run all detectors
         detectors = [
             CancellationDetector(self.db, brand_id, start_date, end_date, store_ids),
+            ProductOpportunityDetector(self.db, brand_id, start_date, end_date, store_ids),
             # Add more detectors here in future:
-            # ProductOpportunityDetector(...),
             # ChurnRiskDetector(...),
             # etc.
         ]

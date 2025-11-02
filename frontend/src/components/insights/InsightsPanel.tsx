@@ -229,13 +229,18 @@ function InsightCard({ insight, currentDateRange, onNavigateToDetail }: InsightC
 
           {/* Action Link */}
           {onNavigateToDetail && (
-            <button
-              onClick={handleNavigateToDetail}
-              className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline cursor-pointer transition-colors"
-            >
-              Ver Análise Detalhada
-              <ArrowRight className="w-4 h-4" />
-            </button>
+            (insight.context.affected_stores?.length > 0 ||
+            insight.context.affected_channels?.length > 0 ||
+            insight.context.affected_days?.length > 0 ||
+            insight.context.affected_hours?.length > 0) && (
+              <button
+                onClick={handleNavigateToDetail}
+                className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline cursor-pointer transition-colors"
+              >
+                Ver Análise Detalhada
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            )
           )}
         </div>
       </div>
