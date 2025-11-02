@@ -179,7 +179,7 @@ function InsightCard({ insight, currentDateRange, onNavigateToDetail }: InsightC
             <div className="flex items-center gap-2">
               <span className="text-xs font-medium text-muted-foreground">Impacto:</span>
               <span className={`text-sm font-bold ${color}`}>
-                {formatCurrency(insight.impact.value)}/{insight.impact.period === 'monthly' ? 'mês' : insight.impact.period}
+                {formatCurrency(insight.impact.value)}/{insight.impact.period === 'monthly' ? 'mês' : 'ano'}
               </span>
             </div>
 
@@ -229,10 +229,10 @@ function InsightCard({ insight, currentDateRange, onNavigateToDetail }: InsightC
 
           {/* Action Link */}
           {onNavigateToDetail && (
-            (insight.context.affected_stores?.length > 0 ||
-            insight.context.affected_channels?.length > 0 ||
-            insight.context.affected_days?.length > 0 ||
-            insight.context.affected_hours?.length > 0) && (
+            (Boolean(insight.context.affected_stores?.length) ||
+            Boolean(insight.context.affected_channels?.length) ||
+            Boolean(insight.context.affected_days?.length) ||
+            Boolean(insight.context.affected_hours?.length)) && (
               <button
                 onClick={handleNavigateToDetail}
                 className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline cursor-pointer transition-colors"
