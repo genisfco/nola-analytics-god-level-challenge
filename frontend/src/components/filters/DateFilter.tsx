@@ -27,7 +27,7 @@ export function DateFilter({ startDate, endDate, onChange }: DateFilterProps) {
   }
 
   const quickRanges = [
-    { label: 'Últimos 7 dias', days: 7 },
+    { label: 'Últimos 15 dias', days: 15 },
     { label: 'Últimos 30 dias', days: 30 },
     { label: 'Últimos 90 dias', days: 90 },
   ]

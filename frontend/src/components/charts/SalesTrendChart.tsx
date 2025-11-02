@@ -24,20 +24,16 @@ export function SalesTrendChart({ data }: SalesTrendChartProps) {
           <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
           <XAxis 
             dataKey="date" 
-            tick={{ fontSize: 12 }}
-            stroke="#6b7280"
+            hide={true}
           />
           <YAxis 
             yAxisId="left"
-            tick={{ fontSize: 12 }}
-            stroke="#6b7280"
-            tickFormatter={(value) => `R$ ${(value / 1000).toFixed(0)}k`}
+            hide={true}
           />
           <YAxis 
             yAxisId="right"
             orientation="right"
-            tick={{ fontSize: 12 }}
-            stroke="#6b7280"
+            hide={true}
           />
           <Tooltip 
             formatter={(value: number, name: string) => {

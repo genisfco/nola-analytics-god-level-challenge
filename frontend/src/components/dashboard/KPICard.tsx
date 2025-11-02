@@ -29,7 +29,7 @@ export function KPICard({
 
   return (
     <div className={cn(
-      'bg-card rounded-lg shadow-sm border border-border p-6 transition-all hover:shadow-md',
+      'bg-card rounded-lg shadow-sm border border-border p-6 transition-all hover:shadow-md h-full flex flex-col',
       variantStyles[variant]
     )}>
       <div className="flex items-start justify-between">

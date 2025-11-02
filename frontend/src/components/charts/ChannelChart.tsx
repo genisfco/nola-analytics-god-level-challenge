@@ -16,18 +16,19 @@ export function ChannelChart({ data }: ChannelChartProps) {
   }))
 
   return (
-    <div className="bg-card rounded-lg shadow-sm border border-border p-6">
+    <div className="bg-card rounded-lg shadow-sm border border-border p-6 h-full flex flex-col">
       <h3 className="text-lg font-semibold text-card-foreground mb-4">
         🛵 Distribuição por Canal
       </h3>
-      <ResponsiveContainer width="100%" height={300}>
-        <PieChart>
+      <div className="flex-1 min-h-0">
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
           <Pie
             data={chartData}
             cx="50%"
             cy="50%"
             labelLine={false}
-            label={({ name, share }) => `${name}: ${formatPercent(share)}`}
+            label={({ share }) => formatPercent(share)}
             outerRadius={100}
             fill="#8884d8"
             dataKey="value"
@@ -44,8 +45,9 @@ export function ChannelChart({ data }: ChannelChartProps) {
               borderRadius: '8px'
             }}
           />
-        </PieChart>
-      </ResponsiveContainer>
+          </PieChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   )
 }
