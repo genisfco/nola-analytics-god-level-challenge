@@ -9,6 +9,7 @@ from app.models.schemas import Insight, InsightsResponse
 from .cancellation_detector import CancellationDetector
 from .product_opportunity_detector import ProductOpportunityDetector
 from .churn_risk_detector import ChurnRiskDetector
+from .store_outlier_detector import StoreOutlierDetector
 
 
 class InsightsEngine:
@@ -48,8 +49,8 @@ class InsightsEngine:
             CancellationDetector(self.db, brand_id, start_date, end_date, store_ids),
             ProductOpportunityDetector(self.db, brand_id, start_date, end_date, store_ids),
             ChurnRiskDetector(self.db, brand_id, start_date, end_date, store_ids),
+            StoreOutlierDetector(self.db, brand_id, start_date, end_date, store_ids),
             # Add more detectors here in future:
-            # StoreOutlierDetector(...),
             # RevenueTrendDetector(...),
             # etc.
         ]
