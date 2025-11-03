@@ -19,22 +19,6 @@ services:
     networks:
       - analytics-network
 
-  redis:
-    image: redis:7-alpine
-    container_name: analytics-cache
-    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-    networks:
-      - analytics-network
-
   backend:
     build:
       context: ./backend
@@ -42,14 +26,11 @@ services:
     container_name: analytics-backend
     environment:
       DATABASE_URL: postgresql://challenge:challenge_2024@postgres:5432/challenge_db
-      REDIS_URL: redis://redis:6379/0
       DEBUG: "false"
     ports:
       - "8000:8000"
     depends_on:
       postgres:
-        condition: service_healthy
-      redis:
         condition: service_healthy
     volumes:
       - ./backend/app:/app/app
@@ -90,8 +71,6 @@ services:
 
 volumes:
   postgres_data:
-    driver: local
-  redis_data:
     driver: local
 
 networks:

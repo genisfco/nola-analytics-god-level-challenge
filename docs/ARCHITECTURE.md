@@ -11,7 +11,7 @@ Esta é a documentação detalhada da arquitetura da **Restaurant Analytics Plat
 Optamos por uma arquitetura em camadas (layered architecture) com separação clara de responsabilidades:
 
 ```
-Frontend (React) ←→ Backend (FastAPI) ←→ Cache (Redis) ←→ Database (PostgreSQL)
+Frontend (React) ←→ Backend (FastAPI) ←→ Database (PostgreSQL)
 ```
 
 **Justificativa:**
@@ -69,27 +69,7 @@ Frontend (React) ←→ Backend (FastAPI) ←→ Cache (Redis) ←→ Database (
 
 ---
 
-### 4. **Cache: Redis**
-
-**Por quê Redis?**
-- Latência < 1ms (in-memory)
-- TTL automático para invalidação
-- Simples de usar e deployar
-
-**Estratégia de Cache:**
-```python
-# Cache key pattern
-f"sales:summary:{start_date}:{end_date}:{store_id}:{channel_id}"
-
-# TTL baseado na "temperatura" dos dados
-- Dados do dia atual: 5 minutos
-- Dados de ontem: 1 hora
-- Dados > 7 dias atrás: 24 horas
-```
-
----
-
-### 5. **Frontend: React + Vite**
+### 4. **Frontend: React + Vite**
 
 **Por quê React?**
 - Ecossistema maduro
@@ -108,7 +88,7 @@ f"sales:summary:{start_date}:{end_date}:{store_id}:{channel_id}"
 
 ---
 
-### 6. **Data Fetching: TanStack Query**
+### 5. **Data Fetching: TanStack Query**
 
 **Por quê TanStack Query?**
 - Cache automático no client-side
@@ -124,7 +104,7 @@ f"sales:summary:{start_date}:{end_date}:{store_id}:{channel_id}"
 
 ---
 
-### 7. **Charts: Recharts**
+### 6. **Charts: Recharts**
 
 **Por quê Recharts?**
 - Componentes declarativos nativos React
@@ -149,27 +129,22 @@ f"sales:summary:{start_date}:{end_date}:{store_id}:{channel_id}"
    ↓ (cache miss)
 3. Request HTTP → Backend FastAPI
    ↓
-4. Backend verifica Redis cache
-   ↓ (cache miss)
-5. Backend → SQL query otimizada (asyncpg)
+4. Backend → SQL query otimizada (asyncpg)
    ↓
-6. PostgreSQL → Usa índices + materialized views
+5. PostgreSQL → Usa índices + materialized views
    ↓
-7. Resultado → Backend processa com Polars (se necessário)
+6. Resultado → Backend processa com Polars (se necessário)
    ↓
-8. Backend → Armazena em Redis (TTL)
+7. Response JSON → Frontend
    ↓
-9. Response JSON → Frontend
+8. TanStack Query → Cache local + render
    ↓
-10. TanStack Query → Cache local + render
-    ↓
-11. Recharts → Renderiza visualização
+9. Recharts → Renderiza visualização
 ```
 
 **Tempo total (P95):**
-- Cache hit (Redis): ~50ms
 - Cache hit (TanStack Query): ~5ms
-- Cache miss: ~300-500ms
+- Cache miss: ~300-500ms (depende da complexidade da query)
 
 ---
 
@@ -215,15 +190,14 @@ GROUP BY 1, 2, 3;
 ### Vertical Scaling (Curto Prazo)
 
 - PostgreSQL: ↑ RAM, ↑ CPU cores
-- Redis: ↑ maxmemory
 - Backend: ↑ workers uvicorn
 
 ### Horizontal Scaling (Longo Prazo)
 
 - Backend: Load balancer + múltiplas instâncias
 - Database: Read replicas para queries analíticas
-- Cache: Redis Cluster
 - Frontend: CDN (Vercel/Cloudflare)
+- Cache: Considerar Redis ou cache HTTP para queries repetidas
 
 ---
 
@@ -255,7 +229,7 @@ docker compose up
 ### Produção
 
 **Opção 1: Railway** (Recomendado)
-- Backend + PostgreSQL + Redis em Railway
+- Backend + PostgreSQL em Railway
 - Frontend em Vercel
 
 **Opção 2: Render**

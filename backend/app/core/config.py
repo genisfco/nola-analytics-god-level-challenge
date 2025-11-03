@@ -18,16 +18,8 @@ class Settings(BaseSettings):
     DB_POOL_SIZE: int = 10
     DB_MAX_OVERFLOW: int = 20
     
-    # Redis Cache
-    REDIS_URL: str = "redis://localhost:6379/0"
-    CACHE_TTL: int = 300  # 5 minutes default
-    
     # CORS
-    CORS_ORIGINS: list[str] = [
-        "http://localhost:3000",
-        "http://localhost:3001", 
-        "http://localhost:5173"
-    ]
+    CORS_ORIGINS: str = "http://localhost:3000,http://localhost:3001,http://localhost:5173"
     
     # API
     API_V1_PREFIX: str = "/api/v1"

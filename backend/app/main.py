@@ -7,7 +7,6 @@ from contextlib import asynccontextmanager
 
 from app.core.config import settings
 from app.core.database import db
-from app.core.cache import cache
 from app.api.routes import analytics, analytics_advanced, insights
 # from app.api.routes import sales, products
 
@@ -17,15 +16,13 @@ async def lifespan(app: FastAPI):
     """Application lifespan events"""
     # Startup
     await db.connect()
-    await cache.connect()
-    print("✅ Database and cache connected")
+    print("✅ Database connected")
     
     yield
     
     # Shutdown
     await db.disconnect()
-    await cache.disconnect()
-    print("👋 Database and cache disconnected")
+    print("👋 Database disconnected")
 
 
 # Create FastAPI app
@@ -38,9 +35,11 @@ app = FastAPI(
 )
 
 # CORS middleware
+# Parse CORS_ORIGINS string (comma-separated) into list
+cors_origins = [origin.strip() for origin in settings.CORS_ORIGINS.split(",")]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -62,8 +61,7 @@ async def health_check():
     """Health check endpoint"""
     return {
         "status": "healthy",
-        "database": "connected" if db.pool else "disconnected",
-        "cache": "connected" if cache.redis else "disconnected"
+        "database": "connected" if db.pool else "disconnected"
     }
 
 
