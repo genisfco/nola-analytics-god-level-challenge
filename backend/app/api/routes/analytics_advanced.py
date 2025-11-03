@@ -13,6 +13,7 @@ from app.models.schemas import (
     ChurnRiskResponse,
     ProductByContextResponse,
     SalesHeatmapResponse,
+    StoresResponse,
 )
 
 router = APIRouter()
@@ -218,6 +219,60 @@ async def get_products_by_context(
         products=products,
         total_products=len(products),
         context=context,
+        period={
+            "start_date": start_date.isoformat(),
+            "end_date": end_date.isoformat()
+        }
+    )
+
+
+# ============================================================================
+# STORE PERFORMANCE WITH CONTEXTUAL FILTERS
+# ============================================================================
+
+@router.get("/stores/performance", response_model=StoresResponse)
+async def get_store_performance(
+    start_date: date = Query(..., description="Start date (YYYY-MM-DD)"),
+    end_date: date = Query(..., description="End date (YYYY-MM-DD)"),
+    brand_id: Optional[int] = Query(None, description="Brand ID to filter by owner"),
+    store_ids: Optional[str] = Query(None, description="Comma-separated store IDs"),
+    weekday: Optional[int] = Query(None, ge=0, le=6, description="Weekday (0=Monday, 6=Sunday)"),
+    hour_start: Optional[int] = Query(None, ge=0, le=23, description="Start hour (0-23)"),
+    hour_end: Optional[int] = Query(None, ge=0, le=23, description="End hour (0-23)"),
+    channel_id: Optional[int] = Query(None, description="Channel ID"),
+    engine: AdvancedAnalyticsEngine = Depends(get_advanced_engine)
+):
+    """
+    Get store performance metrics with contextual filters
+    
+    Returns metrics for each store:
+    - Total sales
+    - Total revenue
+    - Average ticket
+    - Revenue share %
+    
+    Supports filtering by:
+    - Weekday (e.g., Thursday = 3)
+    - Hour range (e.g., 19-23 for night)
+    - Channel (e.g., iFood, Rappi)
+    - Store IDs
+    """
+    store_ids_list = [int(x) for x in store_ids.split(",")] if store_ids else None
+    
+    stores = await engine.get_store_performance(
+        start_date=start_date,
+        end_date=end_date,
+        brand_id=brand_id,
+        weekday=weekday,
+        hour_start=hour_start,
+        hour_end=hour_end,
+        channel_id=channel_id,
+        store_ids=store_ids_list
+    )
+    
+    return StoresResponse(
+        stores=stores,
+        total_stores=len(stores),
         period={
             "start_date": start_date.isoformat(),
             "end_date": end_date.isoformat()

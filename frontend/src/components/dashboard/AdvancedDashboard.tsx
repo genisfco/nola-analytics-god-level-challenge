@@ -6,6 +6,7 @@ import { AdvancedFilters, ContextFilters } from '../filters/AdvancedFilters'
 import { DeliveryAnalysis } from './DeliveryAnalysis'
 import { ChurnRiskTable } from './ChurnRiskTable'
 import { ProductsByContext } from './ProductsByContext'
+import { StorePerformanceComparison } from './StorePerformanceComparison'
 import type { InsightContext } from '../../App'
 
 interface AdvancedDashboardProps {
@@ -102,8 +103,9 @@ export function AdvancedDashboard({ insightContext }: AdvancedDashboardProps) {
         )}
 
         {/* Filters Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-8">
-          <div className="lg:col-span-2 space-y-4">
+        <div className="space-y-6 mb-8">
+          {/* DateFilter e StoreFilter lado a lado */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <DateFilter
               startDate={dateRange.startDate}
               endDate={dateRange.endDate}
@@ -112,14 +114,15 @@ export function AdvancedDashboard({ insightContext }: AdvancedDashboardProps) {
             <StoreFilter
               onApply={handleStoreFilter}
               initialStores={dateRange.storeIds}
+              layout="horizontal"
             />
           </div>
-          <div className="lg:col-span-3">
-            <AdvancedFilters 
-              onApply={handleContextFilters}
-              initialFilters={contextFilters}
-            />
-          </div>
+          
+          {/* AdvancedFilters abaixo dos dois */}
+          <AdvancedFilters 
+            onApply={handleContextFilters}
+            initialFilters={contextFilters}
+          />
         </div>
 
         {/* Análise de Produtos mais vendidos */}
@@ -135,6 +138,16 @@ export function AdvancedDashboard({ insightContext }: AdvancedDashboardProps) {
         {/* Análise de Performance de Entrega */}
         <div ref={deliveryRef} className="mb-8">
           <DeliveryAnalysis
+            startDate={dateRange.startDate}
+            endDate={dateRange.endDate}
+            contextFilters={contextFilters}
+            storeIds={dateRange.storeIds}
+          />
+        </div>
+
+        {/* Comparação de Performance das Lojas */}
+        <div className="mb-8">
+          <StorePerformanceComparison
             startDate={dateRange.startDate}
             endDate={dateRange.endDate}
             contextFilters={contextFilters}

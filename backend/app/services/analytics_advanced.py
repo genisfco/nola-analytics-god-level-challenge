@@ -12,6 +12,7 @@ from app.models.schemas import (
     ChurnRiskCustomer,
     ProductByContext,
     SalesHeatmapCell,
+    StoreMetrics,
 )
 
 
@@ -630,6 +631,116 @@ class AdvancedAnalyticsEngine:
                 total_sales=row['total_sales'],
                 total_revenue=float(row['total_revenue']),
                 avg_ticket=float(row['avg_ticket'])
+            )
+            for row in results
+        ]
+    
+    # ========================================================================
+    # STORE PERFORMANCE WITH CONTEXTUAL FILTERS
+    # ========================================================================
+    
+    async def get_store_performance(
+        self,
+        start_date: date,
+        end_date: date,
+        brand_id: Optional[int] = None,
+        weekday: Optional[int] = None,  # 0=Monday, 6=Sunday
+        hour_start: Optional[int] = None,
+        hour_end: Optional[int] = None,
+        channel_id: Optional[int] = None,
+        store_ids: Optional[list[int]] = None
+    ) -> list[StoreMetrics]:
+        """
+        Get store performance metrics with contextual filters (weekday, hour range, channel)
+        
+        Note: revenue_share is always calculated against ALL stores in the network,
+        regardless of store_ids filter, so participation % is meaningful network-wide.
+        """
+        # WHERE clause for ALL stores (to calculate total revenue for participation %)
+        where_clauses_all = [
+            "s.created_at >= $1",
+            "s.created_at < $2",
+            "s.sale_status_desc = 'COMPLETED'"
+        ]
+        params = [start_date, end_date + timedelta(days=1)]
+        param_count = 2
+        
+        if brand_id:
+            param_count += 1
+            where_clauses_all.append(f"st.brand_id = ${param_count}")
+            params.append(brand_id)
+        
+        if weekday is not None:
+            param_count += 1
+            where_clauses_all.append(f"EXTRACT(DOW FROM s.created_at)::INT = ${param_count}")
+            params.append(weekday)
+        
+        if hour_start is not None and hour_end is not None:
+            param_count += 1
+            where_clauses_all.append(f"EXTRACT(HOUR FROM s.created_at)::INT >= ${param_count}")
+            params.append(hour_start)
+            param_count += 1
+            where_clauses_all.append(f"EXTRACT(HOUR FROM s.created_at)::INT < ${param_count}")
+            params.append(hour_end)
+        
+        if channel_id is not None:
+            param_count += 1
+            where_clauses_all.append(f"s.channel_id = ${param_count}")
+            params.append(channel_id)
+        
+        # WHERE clause for FILTERED stores (to determine which stores to return)
+        where_clauses_filtered = where_clauses_all.copy()
+        if store_ids:
+            param_count += 1
+            where_clauses_filtered.append(f"s.store_id = ANY(${param_count})")
+            params.append(store_ids)
+        
+        where_clause_all = " AND ".join(where_clauses_all)
+        where_clause_filtered = " AND ".join(where_clauses_filtered)
+        
+        query = f"""
+        -- Calculate total revenue from ALL stores (for participation calculation)
+        WITH all_store_revenue AS (
+            SELECT SUM(s.total_amount) as total_revenue_all
+            FROM sales s
+            JOIN stores st ON st.id = s.store_id
+            WHERE {where_clause_all}
+        ),
+        -- Calculate stats for FILTERED stores only
+        store_stats AS (
+            SELECT 
+                st.id as store_id,
+                st.name as store_name,
+                st.city,
+                st.state,
+                COUNT(*) as total_sales,
+                SUM(s.total_amount) as total_revenue,
+                AVG(s.total_amount) as average_ticket
+            FROM sales s
+            JOIN stores st ON st.id = s.store_id
+            WHERE {where_clause_filtered}
+            GROUP BY st.id, st.name, st.city, st.state
+        )
+        SELECT 
+            ss.*,
+            ROUND((ss.total_revenue / NULLIF(ar.total_revenue_all, 0) * 100), 2) as revenue_share
+        FROM store_stats ss
+        CROSS JOIN all_store_revenue ar
+        ORDER BY ss.total_revenue DESC
+        """
+        
+        results = await self.db.fetch_all(query, *params)
+        
+        return [
+            StoreMetrics(
+                store_id=row['store_id'],
+                store_name=row['store_name'],
+                city=row['city'],
+                state=row['state'],
+                total_sales=row['total_sales'],
+                total_revenue=float(row['total_revenue']),
+                average_ticket=float(row['average_ticket']),
+                revenue_share=float(row['revenue_share']) if row['revenue_share'] else 0.0
             )
             for row in results
         ]

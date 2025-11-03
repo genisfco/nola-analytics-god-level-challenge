@@ -33,9 +33,10 @@ const channelOptions = [
 ]
 
 const hourRanges = [
-  { start: 6, end: 12, label: 'Manhã (6h-12h)' },
-  { start: 12, end: 18, label: 'Tarde (12h-18h)' },
-  { start: 18, end: 23, label: 'Noite (18h-23h)' },
+  { start: 6, end: 11, label: 'Manhã (6h-11h)' },
+  { start: 11, end: 15, label: 'Almoço (11h-15h)' },
+  { start: 15, end: 18, label: 'Tarde (15h-18h)' },
+  { start: 18, end: 23, label: 'Jantar (18h-23h59m)' },
   { start: 0, end: 6, label: 'Madrugada (0h-6h)' },
 ]
 
@@ -139,79 +140,82 @@ export function AdvancedFilters({ onApply, initialFilters }: AdvancedFiltersProp
       </div>
 
       <div className="space-y-4">
-        {/* Weekday Filter */}
-        <div>
-          <label className="block text-xs font-medium text-muted-foreground mb-2">
-            Dia da Semana
-          </label>
-          <select
-            value={weekday ?? ''}
-            onChange={(e) => setWeekday(e.target.value ? Number(e.target.value) : undefined)}
-            className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-input"
-          >
-            <option value="">Todos os dias</option>
-            {weekdayOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
+        {/* Filtros em grid horizontal */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Weekday Filter */}
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-2">
+              Dia da Semana
+            </label>
+            <select
+              value={weekday ?? ''}
+              onChange={(e) => setWeekday(e.target.value ? Number(e.target.value) : undefined)}
+              className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-input"
+            >
+              <option value="">Todos os dias</option>
+              {weekdayOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
 
-        {/* Hour Range Filter */}
-        <div>
-          <label className="block text-xs font-medium text-muted-foreground mb-2">
-            Período do Dia
-          </label>
-          <select
-            value={
-              hourRange 
-                ? (hourRanges.some(r => r.start === hourRange.start && r.end === hourRange.end)
-                    ? `${hourRange.start}-${hourRange.end}`
-                    : '') 
-                : ''
-            }
-            onChange={(e) => {
-              if (!e.target.value) {
-                setHourRange(undefined)
-                return
+          {/* Hour Range Filter */}
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-2">
+              Período do Dia
+            </label>
+            <select
+              value={
+                hourRange 
+                  ? (hourRanges.some(r => r.start === hourRange.start && r.end === hourRange.end)
+                      ? `${hourRange.start}-${hourRange.end}`
+                      : '') 
+                  : ''
               }
-              const [start, end] = e.target.value.split('-').map(Number)
-              setHourRange({ start, end })
-            }}
-            className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-input"
-          >
-            <option value="">Todos os horários</option>
-            {hourRanges.map((range) => (
-              <option key={`${range.start}-${range.end}`} value={`${range.start}-${range.end}`}>
-                {range.label}
-              </option>
-            ))}
-          </select>
-          {hourRange && !hourRanges.some(r => r.start === hourRange.start && r.end === hourRange.end) && (
-            <p className="text-xs text-primary mt-1">
-              ⏰ Filtro ativo: {hourRange.start}h - {hourRange.end}h
-            </p>
-          )}
-        </div>
+              onChange={(e) => {
+                if (!e.target.value) {
+                  setHourRange(undefined)
+                  return
+                }
+                const [start, end] = e.target.value.split('-').map(Number)
+                setHourRange({ start, end })
+              }}
+              className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-input"
+            >
+              <option value="">Todos os horários</option>
+              {hourRanges.map((range) => (
+                <option key={`${range.start}-${range.end}`} value={`${range.start}-${range.end}`}>
+                  {range.label}
+                </option>
+              ))}
+            </select>
+            {hourRange && !hourRanges.some(r => r.start === hourRange.start && r.end === hourRange.end) && (
+              <p className="text-xs text-primary mt-1">
+                ⏰ Filtro ativo: {hourRange.start}h - {hourRange.end}h
+              </p>
+            )}
+          </div>
 
-        {/* Channel Filter */}
-        <div>
-          <label className="block text-xs font-medium text-muted-foreground mb-2">
-            Canal de Venda
-          </label>
-          <select
-            value={channelId ?? ''}
-            onChange={(e) => setChannelId(e.target.value ? Number(e.target.value) : undefined)}
-            className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-input"
-          >
-            <option value="">Todos os canais</option>
-            {channelOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+          {/* Channel Filter */}
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-2">
+              Canal de Venda
+            </label>
+            <select
+              value={channelId ?? ''}
+              onChange={(e) => setChannelId(e.target.value ? Number(e.target.value) : undefined)}
+              className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-input"
+            >
+              <option value="">Todos os canais</option>
+              {channelOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {/* Apply/Clear Buttons */}

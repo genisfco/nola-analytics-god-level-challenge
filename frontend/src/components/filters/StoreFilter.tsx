@@ -13,9 +13,10 @@ interface Store {
 interface StoreFilterProps {
   onApply: (storeIds: number[]) => void
   initialStores?: number[]
+  layout?: 'vertical' | 'horizontal'
 }
 
-export function StoreFilter({ onApply, initialStores = [] }: StoreFilterProps) {
+export function StoreFilter({ onApply, initialStores = [], layout = 'vertical' }: StoreFilterProps) {
   const { brandId } = useBrand()
   const [selectedStores, setSelectedStores] = useState<number[]>(initialStores)
   const [storeOptions, setStoreOptions] = useState<Store[]>([])
@@ -124,7 +125,9 @@ export function StoreFilter({ onApply, initialStores = [] }: StoreFilterProps) {
         </button>
 
         {/* Store Checkboxes */}
-        <div className="space-y-2 max-h-64 overflow-y-auto">
+        <div className={layout === 'horizontal' 
+          ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 max-h-64 overflow-y-auto" 
+          : "space-y-2 max-h-64 overflow-y-auto"}>
           {storeOptions.map((store) => (
             <label
               key={store.id}
@@ -134,12 +137,12 @@ export function StoreFilter({ onApply, initialStores = [] }: StoreFilterProps) {
                 type="checkbox"
                 checked={selectedStores.includes(store.id)}
                 onChange={() => handleStoreToggle(store.id)}
-                className="w-4 h-4 text-primary border-border rounded focus:ring-2 focus:ring-primary accent-primary"
+                className="w-4 h-4 text-primary border-border rounded focus:ring-2 focus:ring-primary accent-primary flex-shrink-0"
               />
-              <div className="flex flex-col flex-1">
-                <span className="text-sm text-card-foreground font-medium">{store.name}</span>
+              <div className="flex flex-col flex-1 min-w-0">
+                <span className="text-sm text-card-foreground font-medium truncate">{store.name}</span>
                 {(store.city || store.state) && (
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-xs text-muted-foreground truncate">
                     {store.city}{store.city && store.state && ', '}{store.state}
                   </span>
                 )}

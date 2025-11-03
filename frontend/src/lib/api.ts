@@ -97,6 +97,17 @@ export interface ProductByContext {
   context: Record<string, any>;
 }
 
+export interface StoreMetrics {
+  store_id: number;
+  store_name: string;
+  city: string | null;
+  state: string | null;
+  total_sales: number;
+  total_revenue: number;
+  average_ticket: number;
+  revenue_share: number;
+}
+
 export class AnalyticsAPI {
   static async getOverview(params: DateRange) {
     const queryParams = new URLSearchParams({
