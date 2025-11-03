@@ -2,38 +2,52 @@
 
 ## Visão Geral
 
-Esse documento descreve a característica de geração de dados adotada pelo script generate_data.py
+Esse documento descreve a característica de geração de dados adotada pelo script `generate_data.py`.
 
 Resultado final: Banco PostgreSQL com **6 meses de dados operacionais** de restaurantes, espelhando o sistema real da Arcca que gerencia 1000+ estabelecimentos.
+
+**⚠️ Importante:** O script cria automaticamente **7 brands (proprietários)** com dados isolados - cada brand tem seus próprios produtos, itens, canais e lojas.
 
 ## Schema Principal
 
 ### Hierarquia de Vendas
 
 ```
-Sale (Venda)
-├── Store (Loja)
-├── Channel (Canal: presencial/delivery)
-├── Customer (Cliente - opcional, 70% identificados)
+Brand (Proprietário) ← 7 brands criados automaticamente
+├── SubBrand (Sub-marca)
 │
-├── ProductSales[] (1-5 produtos por venda)
-│   ├── Product
-│   └── ItemProductSales[] (customizações: "sem cebola", "+bacon")
-│       ├── Item (complemento/adicional)
-│       ├── OptionGroup (grupo: "Adicionais", "Remover")
-│       └── ItemItemProductSales[] (itens em itens - nested)
+├── Store[] (Loja) ← 50 lojas distribuídas entre brands
+│   ├── Channel[] (Canal: presencial/delivery) ← 6 canais por brand
+│   ├── Product[] (Produtos) ← isolados por brand
+│   └── Item[] (Complementos) ← isolados por brand
 │
-├── Payments[] (1-2 formas de pagamento)
-│   └── PaymentType
-│
-└── DeliverySale (se delivery)
-    ├── Courier info (entregador)
-    └── DeliveryAddress
+└── Sale (Venda)
+    ├── Store (Loja)
+    ├── Channel (Canal: presencial/delivery)
+    ├── Customer (Cliente - opcional, 70% identificados)
+    │
+    ├── ProductSales[] (1-5 produtos por venda)
+    │   ├── Product (do mesmo brand da loja)
+    │   └── ItemProductSales[] (customizações: "sem cebola", "+bacon")
+    │       ├── Item (do mesmo brand)
+    │       ├── OptionGroup (grupo: "Adicionais", "Remover")
+    │       └── ItemItemProductSales[] (itens em itens - nested)
+    │
+    ├── Payments[] (1-2 formas de pagamento)
+    │   └── PaymentType
+    │
+    └── DeliverySale (se delivery)
+        ├── Courier info (entregador)
+        └── DeliveryAddress
 ```
 
 ### Tabelas Core
 
 ```sql
+-- Brands (Proprietários) - 7 criados automaticamente
+brands (id, name, created_at)
+sub_brands (id, brand_id, name, created_at)  -- Sub-marcas por brand
+
 -- Vendas (núcleo)
 sales (
     id, store_id, channel_id, customer_id, sub_brand_id,
@@ -80,30 +94,51 @@ payments (
     id, sale_id, payment_type_id, value, is_online
 )
 
--- Catálogo
-products (id, brand_id, category_id, name)
-items (id, brand_id, category_id, name)  -- Complementos
-option_groups (id, brand_id, name)  -- Grupos de opções
-categories (id, brand_id, name, type)  -- 'P' produto, 'I' item
+-- Catálogo (isolado por brand)
+products (id, brand_id, sub_brand_id, category_id, name, pos_uuid)
+items (id, brand_id, sub_brand_id, category_id, name, pos_uuid)  -- Complementos
+option_groups (id, brand_id, sub_brand_id, name)  -- Grupos de opções
+categories (id, brand_id, sub_brand_id, name, type)  -- 'P' produto, 'I' item
 
 -- Entidades
-stores (id, name, city, state, is_active, is_own)
-channels (id, name, type)  -- 'P' presencial, 'D' delivery
+stores (id, brand_id, sub_brand_id, name, city, state, is_active, is_own)
+channels (id, brand_id, name, description, type)  -- 'P' presencial, 'D' delivery (6 por brand)
 customers (id, customer_name, email, phone_number, birth_date)
-payment_types (id, description)
+payment_types (id, brand_id, description)  -- Tipos por brand
 ```
 
 ## Volume de Dados
 
 ```
-50 lojas → 500.000 vendas → 1.2M produtos vendidos → 800k customizações
+7 brands → 50 lojas → 500.000 vendas → 1.2M produtos vendidos → 800k customizações
          ↓
    10k clientes (70% das vendas identificadas)
 ```
 
-### Distribuição
+### Distribuição por Brand
 
-**Vendas por canal**:
+**7 Brands criados automaticamente:**
+
+| Brand | Lojas | Vendas Estimadas |
+|-------|-------|------------------|
+| Maria - Burguer Boutique | 3 | ~30.000 |
+| João - Pizza & Cia | 8 | ~80.000 |
+| Ana - Sushi House | 7 | ~70.000 |
+| Carlos - Food Center | 8 | ~80.000 |
+| Pedro - Restaurante Popular | 8 | ~80.000 |
+| Lucia - Bistrô Moderno | 8 | ~80.000 |
+| Roberto - Fast Food Network | 8 | ~80.000 |
+
+**Total:** 50 lojas, ~500k vendas
+
+**Isolamento de Dados:**
+- ✅ Cada brand tem seus próprios produtos, itens e canais
+- ✅ Vendas usam apenas produtos do mesmo brand da loja
+- ✅ Canais são criados por brand (6 canais por brand: Presencial, iFood, Rappi, Uber Eats, WhatsApp, App Próprio)
+
+### Distribuição Global
+
+**Vendas por canal** (proporção mantida por brand):
 - Presencial: 40% (~200k vendas)
 - iFood: 30% (~150k)
 - Rappi: 15% (~75k)
@@ -224,8 +259,12 @@ Esta estrutura permite análises como:
 ## Queries de Exemplo
 
 ```sql
--- Vendas completas com produtos e customizações
+-- Listar todos os brands
+SELECT id, name FROM brands ORDER BY id;
+
+-- Vendas completas com produtos e customizações (filtrado por brand)
 SELECT 
+    b.name as brand,
     s.id, s.created_at, s.total_amount,
     st.name as store, ch.name as channel,
     p.name as product,
@@ -233,27 +272,32 @@ SELECT
     array_agg(i.name) as customizations
 FROM sales s
 JOIN stores st ON st.id = s.store_id
+JOIN brands b ON b.id = st.brand_id
 JOIN channels ch ON ch.id = s.channel_id
 JOIN product_sales ps ON ps.sale_id = s.id
 JOIN products p ON p.id = ps.product_id
 LEFT JOIN item_product_sales ips ON ips.product_sale_id = ps.id
 LEFT JOIN items i ON i.id = ips.item_id
 WHERE s.sale_status_desc = 'COMPLETED'
+  AND b.id = 1  -- Filtrar por brand específico
   AND DATE(s.created_at) = '2024-01-15'
-GROUP BY s.id, st.name, ch.name, p.name, ps.quantity
+GROUP BY b.name, s.id, st.name, ch.name, p.name, ps.quantity
 LIMIT 10;
 
--- Top itens/complementos mais vendidos
+-- Top itens/complementos mais vendidos (por brand)
 SELECT 
+    b.name as brand,
     i.name as item,
     COUNT(*) as times_added,
     SUM(ips.additional_price) as revenue_generated
 FROM item_product_sales ips
 JOIN items i ON i.id = ips.item_id
+JOIN brands b ON b.id = i.brand_id
 JOIN product_sales ps ON ps.id = ips.product_sale_id
 JOIN sales s ON s.id = ps.sale_id
 WHERE s.sale_status_desc = 'COMPLETED'
-GROUP BY i.name
+  AND b.id = 1  -- Filtrar por brand específico
+GROUP BY b.name, i.name
 ORDER BY times_added DESC
 LIMIT 20;
 
@@ -278,7 +322,11 @@ ORDER BY avg_delivery_minutes DESC;
 Execute para popular o banco:
 
 ```bash
-python generate_data.py \
+# Via Docker Compose (recomendado)
+docker compose run --rm data-generator
+
+# OU diretamente (se não usar Docker)
+python database/generate_data.py \
     --months 6 \
     --stores 50 \
     --products 500 \
@@ -286,31 +334,37 @@ python generate_data.py \
     --customers 10000
 ```
 
-Isso gera:
-- ~500k vendas
-- ~1.2M produtos vendidos
-- ~800k customizações (items)
-- ~200k entregas com endereço
-- ~600k pagamentos
+**O script cria automaticamente:**
+- ✅ **7 brands** (proprietários)
+- ✅ **50 lojas** distribuídas entre os brands
+- ✅ **Produtos, itens e canais** isolados por brand
+- ✅ **~500k vendas** em 6 meses
+- ✅ **~1.2M produtos vendidos**
+- ✅ **~800k customizações** (items)
+- ✅ **~200k entregas** com endereço
+- ✅ **~600k pagamentos**
 
-**Tempo estimado**: 5-15 minutos dependendo da máquina.
+**Tempo estimado**: 10-15 minutos dependendo da máquina.
+
+> **Nota:** Para mais detalhes sobre regeneração de dados, veja [REGERAR_DADOS.md](./REGERAR_DADOS.md)
 
 ## O Que Isso Habilita
 
 Com essa estrutura completa, sua solução pode responder:
 
-- Faturamento total, ticket médio, vendas por dia
-- Rankings de lojas e produtos
-- Performance por canal e horário
-- Taxa de cancelamento e motivos
-- Análise de descontos
-- **Customizações**: Quais items mais vendidos? Quais produtos recebem mais alterações?
-- **Delivery**: Tempo médio por região? Quais bairros mais pedem?
-- **Mix de produtos**: Quais combinações aparecem juntas?
-- **Jornada do cliente**: Frequência, retenção, lifetime value
-- Detecção de anomalias temporais
-- Previsão de demanda por produto
-- Segmentação de clientes
+- **Por Brand**: Faturamento, ticket médio, vendas por dia (filtrado por proprietário)
+- **Rankings**: Lojas e produtos (comparação entre brands ou isolado por brand)
+- **Performance**: Por canal e horário (canais isolados por brand)
+- **Operacional**: Taxa de cancelamento e motivos
+- **Financeiro**: Análise de descontos, margens por brand
+- **Customizações**: Quais items mais vendidos por brand? Quais produtos recebem mais alterações?
+- **Delivery**: Tempo médio por região? Quais bairros mais pedem? (por brand)
+- **Mix de produtos**: Quais combinações aparecem juntas (dentro do mesmo brand)
+- **Jornada do cliente**: Frequência, retenção, lifetime value (por brand)
+- **Comparação**: Comparar performance entre brands/proprietários
+- Detecção de anomalias temporais (por brand)
+- Previsão de demanda por produto (por brand)
+- Segmentação de clientes (por brand)
 - Otimização de rotas de entrega
 
 ---

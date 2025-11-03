@@ -80,9 +80,14 @@ Invoke-WebRequest -Uri "http://localhost:8000/api/v1/analytics/stores/list?brand
 
 Estes endpoints são usados para:
 
-1. **Brand Selector**: Popular dropdown com lista de proprietários
-2. **Store Filter**: Popular filtro de lojas baseado no brand selecionado
-3. **Context Isolation**: Garantir que cada proprietário veja apenas seus dados
+1. **Brand Selector**: Popular dropdown com lista de proprietários ✅ Implementado
+2. **Store Filter**: Popular filtro de lojas baseado no brand selecionado ✅ Implementado
+3. **Context Isolation**: Garantir que cada proprietário veja apenas seus dados ✅ Implementado
+
+**Integração Frontend:**
+- `BrandContext` usa `/brands/list` para carregar lista de brands
+- `StoreFilter` usa `/stores/list?brand_id=X` para carregar lojas do brand selecionado
+- `useApi()` hook adiciona `brand_id` automaticamente em todas as outras requisições
 
 ## 📊 Distribuição Atual dos Dados
 
@@ -141,18 +146,44 @@ curl "http://localhost:8000/api/v1/analytics/stores/list?brand_id=2"
 # Retorna: 8 lojas
 ```
 
-## 🚀 Próximos Passos
+## ✅ Status de Implementação
 
-1. ✅ Backend: Endpoints criados
-2. ⏳ Frontend: Criar BrandContext
-3. ⏳ Frontend: Criar BrandSelector component
-4. ⏳ Frontend: Atualizar StoreFilter para usar API
-5. ⏳ Backend: Adicionar `brand_id` em todos os endpoints existentes
-6. ⏳ Frontend: Atualizar todas as queries para incluir `brand_id`
+### Backend ✅ COMPLETO
+1. ✅ Endpoints `/brands/list` e `/stores/list` criados e funcionando
+2. ✅ Parâmetro `brand_id` adicionado em **todos** os endpoints de analytics:
+   - `/overview` - Filtra por brand
+   - `/products/top` - Filtra por brand
+   - `/channels` - Filtra por brand
+   - `/stores` - Filtra por brand
+   - `/sales/trend` - Filtra por brand
+   - `/sales/hourly` - Filtra por brand
+   - `/sales/weekday` - Filtra por brand
+   - `/categories` - Filtra por brand
+   - `/insights/automatic` - **Requer brand_id** (obrigatório)
+   - Endpoints avançados também suportam `brand_id`
 
-## 📝 Notas
+### Frontend ✅ COMPLETO
+1. ✅ `BrandContext` criado e funcionando
+2. ✅ `BrandSelector` component criado e integrado
+3. ✅ `StoreFilter` atualizado para buscar lojas via API
+4. ✅ Hook `useApi()` criado - adiciona `brand_id` automaticamente em todas as requisições
+5. ✅ Todos os dashboards (`Dashboard`, `AdvancedDashboard`) usando `brandId`
+6. ✅ Todas as queries incluem `brandId` no queryKey
 
-- Apenas lojas ativas (`is_active=true`) são retornadas
-- A ordenação é alfabética por nome
-- Encoding UTF-8 está configurado para nomes em português
+**Nota:** O hook `useApi()` adiciona `brand_id` automaticamente, então não é necessário passar manualmente em cada requisição.
+
+## 📝 Notas Técnicas
+
+- **Filtro de lojas**: Apenas lojas ativas (`is_active=true`) são retornadas
+- **Ordenação**: Lojas ordenadas alfabeticamente por nome
+- **Encoding**: UTF-8 configurado para nomes em português
+- **Parâmetro brand_id**: 
+  - Obrigatório em `/stores/list`
+  - Opcional (mas recomendado) nos outros endpoints
+  - Obrigatório em `/insights/automatic`
+- **Integração automática**: O hook `useApi()` do frontend adiciona `brand_id` automaticamente
+
+## 🔗 Relacionados
+
+- Documentação completa: [IMPLEMENTACAO_BRANDS.md](./IMPLEMENTACAO_BRANDS.md)
 

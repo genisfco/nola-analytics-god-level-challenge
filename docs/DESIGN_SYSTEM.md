@@ -17,27 +17,46 @@
 ## Mapeamento Semântico
 
 ```css
-/* CSS Variables */
+/* CSS Variables - Definidas em frontend/src/index.css */
 :root {
   /* Brand Colors */
-  --nola-tomate: 1 71% 69%;
-  --nola-brown: 355 71% 32%;
-  --nola-whitesmoke: 0 0% 93%;
-  --nola-darkgray: 214 35% 17%;
-  --nola-white: 0 0% 100%;
+  --nola-tomate: 1 71% 69%;        /* #fd6263 - Primária */
+  --nola-brown: 355 71% 32%;       /* #8b1721 - Secundária */
+  --nola-whitesmoke: 0 0% 93%;     /* #ececec - Background */
+  --nola-darkgray: 214 35% 17%;    /* #1c293a - Textos */
+  --nola-white: 0 0% 100%;         /* #ffffff - Cards */
   
-  /* Semantic Colors */
+  /* Semantic Colors - Layout */
   --background: var(--nola-whitesmoke);    /* Fundo da página */
   --foreground: var(--nola-darkgray);      /* Texto principal */
   
+  /* Semantic Colors - Ações */
   --primary: var(--nola-tomate);           /* Cor primária */
-  --primary-foreground: var(--nola-white); /* Texto sobre primária */
+  --primary-foreground: var(--nola-white);  /* Texto sobre primária */
   
-  --secondary: var(--nola-brown);          /* Cor secundária */
+  --secondary: var(--nola-brown);           /* Cor secundária */
   --secondary-foreground: var(--nola-white); /* Texto sobre secundária */
   
+  --accent: var(--nola-tomate);            /* Cor de destaque */
+  --accent-foreground: var(--nola-white);  /* Texto sobre accent */
+  
+  /* Semantic Colors - Componentes */
   --card: var(--nola-white);               /* Fundo de cards */
   --card-foreground: var(--nola-darkgray); /* Texto em cards */
+  
+  --muted: 0 0% 96%;                       /* Background sutil */
+  --muted-foreground: 214 35% 40%;         /* Texto secundário */
+  
+  --destructive: 0 84% 60%;                /* Cor de erro/remoção */
+  --destructive-foreground: var(--nola-white); /* Texto sobre destructive */
+  
+  /* Semantic Colors - UI */
+  --border: 0 0% 90%;                      /* Bordas */
+  --input: var(--nola-white);              /* Fundo de inputs */
+  --ring: var(--nola-tomate);              /* Foco/anéis */
+  
+  /* Layout */
+  --radius: 0.5rem;                        /* Border radius padrão */
 }
 ```
 
@@ -116,10 +135,57 @@
   Importante
 </span>
 
+// Badge Accent
+<span className="bg-accent text-accent-foreground px-3 py-1 rounded-full text-sm">
+  Destaque
+</span>
+
+// Badge Muted
+<span className="bg-muted text-muted-foreground px-3 py-1 rounded-full text-sm">
+  Secundário
+</span>
+
 // Badge Outline
 <span className="border border-primary text-primary px-3 py-1 rounded-full text-sm">
   Info
 </span>
+```
+
+### Inputs e Formulários
+
+```tsx
+// Input padrão
+<input 
+  className="w-full px-3 py-2 border border-border rounded-md text-sm 
+             bg-input text-foreground 
+             focus:outline-none focus:ring-2 focus:ring-ring"
+  type="text"
+/>
+
+// Label com texto secundário
+<label className="block text-xs font-medium text-muted-foreground mb-1">
+  Data Inicial
+</label>
+```
+
+### Estados e Feedback
+
+```tsx
+// Success/Info
+<div className="bg-primary/10 border-l-4 border-primary p-4 rounded-r">
+  <p className="text-foreground font-medium">Sucesso!</p>
+</div>
+
+// Error/Destructive
+<div className="bg-destructive/10 border-l-4 border-destructive p-4 rounded-r">
+  <p className="text-destructive font-medium">Erro!</p>
+  <p className="text-muted-foreground text-sm">Algo deu errado.</p>
+</div>
+
+// Warning/Accent
+<div className="bg-accent/10 border-l-4 border-accent p-4 rounded-r">
+  <p className="text-accent font-medium">Atenção!</p>
+</div>
 ```
 
 ---
@@ -168,19 +234,38 @@ import { LineChart, Line } from 'recharts'
 </LineChart>
 ```
 
+### Uso via Tailwind (Recomendado)
+
+```tsx
+import { LineChart, Line } from 'recharts'
+
+<LineChart data={data}>
+  <Line dataKey="vendas" stroke="hsl(var(--chart-1))" />
+  {/* Ou usando classes Tailwind */}
+  <Line dataKey="custos" className="stroke-chart-2" />
+</LineChart>
+```
+
 ---
 
 ## Classes Utilitárias Customizadas
 
 ### Acesso Direto às Cores da Marca
 
+As cores Nola estão disponíveis diretamente via Tailwind (configuradas em `tailwind.config.js`):
+
 ```tsx
-// Usando cores diretas (útil para casos específicos)
+// Backgrounds
 <div className="bg-nola-tomate text-nola-white">Tomate</div>
 <div className="bg-nola-brown text-nola-white">Brown</div>
 <div className="bg-nola-whitesmoke text-nola-darkgray">WhiteSmoke</div>
-<div className="text-nola-darkgray">DarkGray</div>
+
+// Textos
+<p className="text-nola-darkgray">DarkGray</p>
+<p className="text-nola-tomate">Tomate</p>
 ```
+
+**Nota:** Prefira usar as cores semânticas (`bg-primary`, `text-foreground`, etc.) sempre que possível para manter consistência e facilitar futuras mudanças de tema.
 
 ---
 
@@ -243,6 +328,20 @@ Para implementar dark mode, adicione:
 <div className="bg-card hover:scale-105 transition-transform duration-200">
   Card interativo
 </div>
+
+// Focus ring (para inputs e botões)
+<input className="focus:outline-none focus:ring-2 focus:ring-ring" />
+```
+
+## Border Radius
+
+O projeto utiliza border radius consistente através da variável `--radius`:
+
+```tsx
+// Border radius automático (via Tailwind config)
+<div className="rounded-lg">/* usa var(--radius) */</div>
+<div className="rounded-md">/* usa calc(var(--radius) - 2px) */</div>
+<div className="rounded-sm">/* usa calc(var(--radius) - 4px) */</div>
 ```
 
 ---
@@ -286,6 +385,22 @@ Para implementar dark mode, adicione:
 
 ---
 
-**Última atualização:** 29/10/2025  
-**Versão:** 1.0
+## Estrutura de Arquivos
+
+As configurações do Design System estão localizadas em:
+
+- **Variáveis CSS:** `frontend/src/index.css`
+- **Configuração Tailwind:** `frontend/tailwind.config.js`
+- **Documentação:** `docs/DESIGN_SYSTEM.md`
+
+## Referências Úteis
+
+- **Tailwind CSS:** [Documentação oficial](https://tailwindcss.com/docs)
+- **HSL Color Format:** As variáveis CSS usam formato HSL sem `hsl()`, permitindo uso com opacidade via Tailwind (ex: `bg-primary/10`)
+- **WCAG Guidelines:** [Web Content Accessibility Guidelines](https://www.w3.org/WAI/WCAG21/quickref/)
+
+---
+
+**Última atualização:** Janeiro 2025  
+**Versão:** 1.1
 

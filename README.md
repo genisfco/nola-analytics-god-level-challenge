@@ -26,7 +26,7 @@ Frontend (React + Vite)
     ↓ HTTP/REST
 Backend (FastAPI + Python)
     ↓ SQL
-Cache (Redis) + Database (PostgreSQL)
+Database (PostgreSQL)
 ```
 
 ### Stack Tecnológica
@@ -39,10 +39,9 @@ Cache (Redis) + Database (PostgreSQL)
 | **UI** | TailwindCSS | Utility-first, produtividade |
 | **Backend** | FastAPI + Python 3.11 | Async, type-safe, analytics |
 | **Database** | PostgreSQL 15 | JSONB, window functions, MVs |
-| **Cache** | Redis 7 | In-memory, < 1ms latency |
 | **Deploy** | Railway / Render | Fácil, free tier, CI/CD |
 
-📚 **Documentação completa:** [TECH_STACK.md](./TECH_STACK.md)
+📚 **Documentação completa:** [docs/TECH_STACK.md](./docs/TECH_STACK.md)
 
 ---
 
@@ -70,17 +69,24 @@ docker compose up -d postgres
 # Aguarde inicializar (10s)
 timeout 10
 
-# Gere ~550k vendas (10-15 min)
+# Gere ~500k vendas com 7 brands automaticamente (10-15 min)
 docker compose run --rm data-generator
+
+# O script cria automaticamente:
+# - 7 brands (proprietários)
+# - 50 lojas distribuídas
+# - Produtos, itens e canais por brand
+# - ~500k vendas em 6 meses
 
 # Verifique
 docker compose exec postgres psql -U challenge challenge_db -c "SELECT COUNT(*) FROM sales;"
+docker compose exec postgres psql -U challenge challenge_db -c "SELECT COUNT(*) FROM brands;"
 ```
 
 ### 3. Suba os Serviços
 
 ```bash
-# Suba tudo (PostgreSQL, Redis, Backend, Frontend)
+# Suba tudo (PostgreSQL, Backend, Frontend)
 docker compose up -d
 
 # Verifique logs
@@ -104,7 +110,7 @@ restaurant-analytics/
 ├── backend/              # FastAPI backend
 │   ├── app/
 │   │   ├── api/         # API routes
-│   │   ├── core/        # Config, DB, Cache
+│   │   ├── core/        # Config, DB
 │   │   ├── models/      # Schemas, queries
 │   │   └── services/    # Business logic
 │   ├── tests/
@@ -124,11 +130,14 @@ restaurant-analytics/
 │   └── generate_data.py
 │
 ├── docs/                # Documentação
-│   ├── ARCHITECTURE.md
-│   ├── API.md
-│   └── DEPLOYMENT.md
-│
-├── TECH_STACK.md        # Decisões técnicas
+│   ├── ARCHITECTURE.md      # Arquitetura do sistema
+│   ├── DESIGN_SYSTEM.md     # Design System e cores
+│   ├── TECH_STACK.md        # Decisões técnicas
+│   ├── DADOS.md             # Estrutura de dados
+│   ├── IMPLEMENTACAO_BRANDS.md  # Sistema multi-proprietário
+│   ├── ENDPOINTS_BRANDS.md     # Endpoints de brands
+│   ├── REGERAR_DADOS.md        # Regenerar dados
+│   └── ROADMAP_INSIGHTS.md     # Roadmap de insights
 └── docker-compose.yml
 ```
 
@@ -186,8 +195,8 @@ npm test
 
 | Métrica | Target | Estratégia |
 |---------|--------|-----------|
-| API Response (P95) | < 500ms | Redis cache + índices |
-| Dashboard Load | < 2s | Parallel requests + cache |
+| API Response (P95) | < 500ms | Índices PostgreSQL + otimização de queries |
+| Dashboard Load | < 2s | Parallel requests + TanStack Query cache |
 | Chart Render | < 100ms | React.memo + Recharts |
 
 **Resultados atuais:** Ver [docs/PERFORMANCE.md](./docs/PERFORMANCE.md)
@@ -196,10 +205,14 @@ npm test
 
 ## 📖 Documentação
 
-- [TECH_STACK.md](./TECH_STACK.md) - Decisões tecnológicas detalhadas
+- [docs/TECH_STACK.md](./docs/TECH_STACK.md) - Decisões tecnológicas detalhadas
 - [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) - Arquitetura e design
-- [docs/API.md](./docs/API.md) - API documentation
-- [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) - Deploy guide
+- [docs/DESIGN_SYSTEM.md](./docs/DESIGN_SYSTEM.md) - Design System e paleta de cores
+- [docs/DADOS.md](./docs/DADOS.md) - Estrutura e geração de dados
+- [docs/IMPLEMENTACAO_BRANDS.md](./docs/IMPLEMENTACAO_BRANDS.md) - Sistema multi-proprietário
+- [docs/ENDPOINTS_BRANDS.md](./docs/ENDPOINTS_BRANDS.md) - Endpoints de brands e stores
+- [docs/REGERAR_DADOS.md](./docs/REGERAR_DADOS.md) - Como regenerar dados do banco
+- [docs/ROADMAP_INSIGHTS.md](./docs/ROADMAP_INSIGHTS.md) - Roadmap de insights
 
 ---
 
@@ -208,9 +221,10 @@ npm test
 ### MVP (v1.0)
 - ✅ Backend API funcionando (FastAPI)
 - ✅ Conexão com PostgreSQL (500k+ vendas)
-- ✅ Cache com Redis
 - ✅ Frontend base (React + TailwindCSS)
 - ✅ Health check endpoint
+- ✅ Analytics engine completo
+- ✅ API endpoints para métricas e visualizações
 
 ### Em Desenvolvimento
 - ⏳ Dashboard com KPIs principais

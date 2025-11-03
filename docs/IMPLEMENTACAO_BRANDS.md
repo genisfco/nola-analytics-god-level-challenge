@@ -43,16 +43,20 @@ Foi implementado um sistema completo que permite:
 
 ### Comando para Regenerar:
 
-```powershell
-# 1. Dropar e recriar banco
+> **Nota:** Para instruções completas, veja [REGERAR_DADOS.md](./REGERAR_DADOS.md)
+
+```bash
+# Opção 1: Reset completo (recomendado)
+docker compose down -v
+docker compose up -d postgres
+# Aguardar inicialização...
+docker compose run --rm data-generator
+
+# Opção 2: Apenas resetar banco
 docker exec -it analytics-db psql -U challenge -d postgres -c "DROP DATABASE IF EXISTS challenge_db;"
 docker exec -it analytics-db psql -U challenge -d postgres -c "CREATE DATABASE challenge_db;"
-
-# 2. Criar schema
 Get-Content database/schema.sql | docker exec -i analytics-db psql -U challenge -d challenge_db
-
-# 3. Gerar dados
-docker run --rm -it --network nola-god-level_analytics-network -v ${PWD}:/app -w /app python:3.11-slim bash -c "pip install -q psycopg2-binary faker && python database/generate_data.py --db-url postgresql://challenge:challenge_2024@analytics-db:5432/challenge_db"
+docker compose run --rm data-generator
 ```
 
 ---
@@ -86,9 +90,9 @@ class StoresListResponse(BaseModel):
 ```
 
 #### `backend/app/api/routes/analytics.py`
-**Endpoints adicionados:**
+**Endpoints adicionados/modificados:**
 
-##### 1. GET `/api/v1/analytics/brands/list`
+##### 1. GET `/api/v1/analytics/brands/list` ✅
 Lista todos os brands disponíveis.
 
 **Resposta:**
@@ -96,13 +100,14 @@ Lista todos os brands disponíveis.
 {
   "brands": [
     {"id": 1, "name": "Maria - Burguer Boutique"},
-    {"id": 2, "name": "João - Pizza & Cia"}
+    {"id": 2, "name": "João - Pizza & Cia"},
+    ...
   ],
   "total": 7
 }
 ```
 
-##### 2. GET `/api/v1/analytics/stores/list?brand_id={id}`
+##### 2. GET `/api/v1/analytics/stores/list?brand_id={id}` ✅
 Lista lojas de um brand específico.
 
 **Resposta:**
@@ -121,6 +126,19 @@ Lista lojas de um brand específico.
   "brand_id": 1
 }
 ```
+
+##### 3. Todos os endpoints de analytics atualizados ✅
+Todos os endpoints principais agora aceitam `brand_id` como parâmetro opcional:
+- ✅ `/overview` - Filtra por brand
+- ✅ `/products/top` - Filtra por brand
+- ✅ `/channels` - Filtra por brand
+- ✅ `/stores` - Filtra por brand
+- ✅ `/sales/trend` - Filtra por brand
+- ✅ `/sales/hourly` - Filtra por brand
+- ✅ `/sales/weekday` - Filtra por brand
+- ✅ `/categories` - Filtra por brand
+- ✅ `/insights/automatic` - **Requer brand_id** (obrigatório)
+- ✅ Endpoints avançados também suportam brand_id
 
 ### Testes Realizados:
 
@@ -144,7 +162,7 @@ curl "http://localhost:8000/api/v1/analytics/stores/list?brand_id=2"
 
 ### Arquivos Criados:
 
-#### 1. `frontend/src/contexts/BrandContext.tsx`
+#### 1. `frontend/src/contexts/BrandContext.tsx` ✅
 Context API para gerenciar brand selecionado globalmente.
 
 **Funcionalidades:**
@@ -158,7 +176,7 @@ Context API para gerenciar brand selecionado globalmente.
 const { brandId, brandName, brands, setBrand, loading } = useBrand()
 ```
 
-#### 2. `frontend/src/components/BrandSelector.tsx`
+#### 2. `frontend/src/components/BrandSelector.tsx` ✅
 Componente dropdown de seleção de proprietário.
 
 **Características:**
@@ -174,7 +192,22 @@ Componente dropdown de seleção de proprietário.
 └──────────────────────────────────────────┘
 ```
 
-#### 3. `frontend/src/components/filters/StoreFilter.tsx` (Atualizado)
+#### 3. `frontend/src/hooks/useApi.ts` ✅ (Novo!)
+Hook que facilita chamadas à API incluindo `brand_id` automaticamente.
+
+**Funcionalidades:**
+- Adiciona `brand_id` automaticamente em todas as requisições
+- Constrói URLs com parâmetros corretamente
+- Trata arrays (store_ids, channel_ids) automaticamente
+
+**Uso:**
+```tsx
+const { fetchApi } = useApi()
+// brand_id é adicionado automaticamente!
+const data = await fetchApi('/overview', { start_date: '...', end_date: '...' })
+```
+
+#### 4. `frontend/src/components/filters/StoreFilter.tsx` ✅ (Atualizado)
 Filtro de lojas que busca dinamicamente da API.
 
 **Mudanças:**
@@ -192,6 +225,22 @@ Filtro de lojas que busca dinamicamente da API.
 #### `frontend/src/App.tsx`
 - ✅ Adicionado `<BrandSelector />` no topo da aplicação
 
+#### `frontend/src/components/dashboard/Dashboard.tsx` ✅
+- ✅ Usa `useBrand()` para obter brandId
+- ✅ Todas as queries incluem brandId no queryKey
+- ✅ Todas as queries habilitadas apenas quando brandId existe
+- ✅ `useApi()` adiciona brand_id automaticamente nas requisições
+
+#### `frontend/src/components/dashboard/AdvancedDashboard.tsx` ✅
+- ✅ Todos os componentes internos usam brandId
+- ✅ Filtros avançados respeitam brand_id
+
+#### Outros componentes de dashboard ✅
+- ✅ `DeliveryAnalysis.tsx` - Usa brandId
+- ✅ `ChurnRiskTable.tsx` - Usa brandId
+- ✅ `ProductsByContext.tsx` - Usa brandId
+- ✅ `StorePerformanceComparison.tsx` - Usa brandId
+
 ---
 
 ## 📁 Estrutura de Arquivos
@@ -200,24 +249,32 @@ Filtro de lojas que busca dinamicamente da API.
 projeto/
 ├── database/
 │   ├── generate_data.py          # ✅ Modificado: gera múltiplos brands
-│   ├── REGERAR_DADOS.md          # ✅ Atualizado: comandos corretos
 │   └── schema.sql                # (sem mudanças)
 │
 ├── backend/
-│   ├── app/
-│   │   ├── models/
-│   │   │   └── schemas.py        # ✅ Modificado: Brand, Store schemas
-│   │   └── api/
-│   │       └── routes/
-│   │           └── analytics.py  # ✅ Modificado: novos endpoints
+│   └── app/
+│       ├── models/
+│       │   └── schemas.py        # ✅ Modificado: Brand, Store schemas
+│       └── api/
+│           └── routes/
+│               └── analytics.py  # ✅ Modificado: novos endpoints
+│
+├── docs/
+│   ├── REGERAR_DADOS.md          # ✅ Atualizado: comandos corretos
 │   └── ENDPOINTS_BRANDS.md       # ✅ Criado: documentação
 │
 └── frontend/
     ├── src/
     │   ├── contexts/
     │   │   └── BrandContext.tsx  # ✅ Criado
+    │   ├── hooks/
+    │   │   └── useApi.ts          # ✅ Criado: adiciona brand_id automaticamente
     │   ├── components/
-    │   │   ├── BrandSelector.tsx # ✅ Criado
+    │   │   ├── BrandSelector.tsx  # ✅ Criado
+    │   │   ├── dashboard/
+    │   │   │   ├── Dashboard.tsx      # ✅ Modificado: usa brandId
+    │   │   │   ├── AdvancedDashboard.tsx # ✅ Modificado: usa brandId
+    │   │   │   └── ... (outros componentes usam brandId)
     │   │   └── filters/
     │   │       └── StoreFilter.tsx # ✅ Modificado
     │   ├── App.tsx               # ✅ Modificado
@@ -294,12 +351,14 @@ http://localhost:5173
 - [x] Adicionar BrandProvider
 - [x] Documentar sistema
 
-### Pendente
-- [ ] Adicionar brand_id em todos os endpoints de analytics
-- [ ] Criar hook useApi() para facilitar
-- [ ] Atualizar Dashboard para filtrar por brand
-- [ ] Atualizar AdvancedDashboard para filtrar por brand
-- [ ] Otimizar reload (React Query invalidation)
+### ✅ Completado (Após Implementação Inicial)
+- [x] Adicionar brand_id em todos os endpoints de analytics - **COMPLETO**
+- [x] Criar hook useApi() para facilitar - **IMPLEMENTADO**
+- [x] Atualizar Dashboard para filtrar por brand - **COMPLETO**
+- [x] Atualizar AdvancedDashboard para filtrar por brand - **COMPLETO**
+- [ ] Otimizar reload (React Query invalidation) - **PENDENTE** (melhoria futura)
+
+**Nota:** O hook `useApi()` já adiciona `brand_id` automaticamente em todas as requisições, então não é necessário passar manualmente em cada query.
 
 ---
 
@@ -353,20 +412,35 @@ Lojas Disponíveis:
 ## 📝 Notas Importantes
 
 1. **Senha do PostgreSQL:** `challenge_2024` (não `challenge`)
-2. **Container do Postgres:** `analytics-db` (não `nola-god-level-postgres-1`)
-3. **Reload automático:** Ao trocar brand, página recarrega para garantir dados atualizados
-4. **LocalStorage:** Mantém brand selecionado entre sessões
-5. **Primeira carga:** Seleciona Maria automaticamente (primeiro brand)
+2. **Container do Postgres:** `analytics-db`
+3. **Docker Compose:** Use `docker compose run --rm data-generator` para gerar dados
+4. **Hook useApi:** Adiciona `brand_id` automaticamente - não precisa passar manualmente
+5. **Reload automático:** Ao trocar brand, página recarrega para garantir dados atualizados
+6. **LocalStorage:** Mantém brand selecionado entre sessões
+7. **Primeira carga:** Seleciona primeiro brand automaticamente (Maria)
 
 ---
 
-## 🚀 Próximos Passos Recomendados
+## ✅ Status Final
 
-1. **Backend:** Adicionar `brand_id` em todos os endpoints de analytics (overview, products, sales, etc.)
-2. **Frontend:** Criar hook `useApi()` para centralizar inclusão de brand_id
-3. **Dashboard:** Atualizar todas as queries para incluir brand_id
-4. **Otimização:** Usar React Query invalidation em vez de reload
-5. **Admin View:** Adicionar opção para admin ver todos os brands agregados
+### Implementação Completa
+
+**Backend:** ✅
+- Todos os endpoints de analytics suportam `brand_id`
+- Endpoints de insights requerem `brand_id` (obrigatório)
+- Endpoints de brands/stores implementados
+
+**Frontend:** ✅
+- BrandContext funcionando
+- BrandSelector integrado
+- useApi hook criado e adicionando brand_id automaticamente
+- Todos os dashboards usando brandId
+- StoreFilter dinâmico por brand
+
+**Melhorias Futuras (Opcional):**
+- [ ] Usar React Query invalidation em vez de reload ao trocar brand
+- [ ] Admin View para ver todos os brands agregados
+- [ ] Cache de stores por brand
 
 ---
 

@@ -38,13 +38,6 @@ Este documento detalha todas as decisões tecnológicas para a plataforma de ana
                       │ SQL Queries
                       ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                    CACHE LAYER (Redis)                      │
-│  - Query Results Cache (TTL-based)                         │
-│  - Metadata Cache                                           │
-└─────────────────────┬───────────────────────────────────────┘
-                      │
-                      ▼
-┌─────────────────────────────────────────────────────────────┐
 │                    DATABASE LAYER                           │
 │  PostgreSQL 15                                              │
 │  - Raw Tables (OLTP)                                        │
@@ -379,33 +372,6 @@ polars==1.9.0
 
 ---
 
-### **Caching: Redis**
-
-**Escolha:** Redis 7+
-
-**Por quê?**
-- ✅ **In-memory**: Latência < 1ms
-- ✅ **TTL automático**: Expiração de cache configurável
-- ✅ **Pub/Sub**: Invalidação de cache em tempo real (futuro)
-- ✅ **Persistence**: RDB/AOF para não perder dados
-
-**Estratégia de cache:**
-```python
-# Cache key pattern
-f"sales:summary:{start_date}:{end_date}:{store_id}:{channel_id}"
-
-# TTL baseado na granularidade
-- Dados do dia atual: 5 minutos
-- Dados de ontem: 1 hora
-- Dados > 7 dias atrás: 24 horas (dados "frios")
-```
-
-```txt
-redis==5.1.0
-```
-
----
-
 ### **HTTP Client (optional): httpx**
 
 Para integrações futuras (webhooks, APIs externas)
@@ -507,10 +473,6 @@ services:
       test: ["CMD-SHELL", "pg_isready -U analytics"]
       interval: 5s
       
-  redis:
-    image: redis:7-alpine
-    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
-    
   backend:
     build: ./backend
     depends_on:
@@ -518,7 +480,6 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql+asyncpg://analytics:${DB_PASSWORD}@postgres/restaurant_analytics
-      REDIS_URL: redis://redis:6379/0
       
   frontend:
     build: ./frontend
@@ -532,7 +493,7 @@ services:
 
 **Opção 1: Railway** (Recomendado)
 - ✅ Deploy automático via GitHub
-- ✅ PostgreSQL e Redis managed
+- ✅ PostgreSQL managed
 - ✅ Free tier generoso
 - ✅ Logs e monitoring built-in
 
@@ -597,8 +558,7 @@ restaurant-analytics/
 │   │   │   └── dependencies.py
 │   │   ├── core/
 │   │   │   ├── config.py
-│   │   │   ├── database.py
-│   │   │   └── cache.py
+│   │   │   └── database.py
 │   │   ├── models/
 │   │   │   ├── schemas.py
 │   │   │   └── queries.py
@@ -680,8 +640,8 @@ faker==30.0.0  # Test data generation
 
 | Métrica | Target | Estratégia |
 |---------|--------|-----------|
-| API Response (P50) | < 200ms | Redis cache + indexes |
-| API Response (P95) | < 500ms | Materialized views |
+| API Response (P50) | < 200ms | Índices PostgreSQL + TanStack Query cache |
+| API Response (P95) | < 500ms | Materialized views + query optimization |
 | API Response (P99) | < 1s | Query optimization |
 | Frontend FCP | < 1.5s | Code splitting |
 | Frontend TTI | < 3s | Lazy loading |
@@ -702,8 +662,8 @@ faker==30.0.0  # Test data generation
 | **Backend** | FastAPI | Fast, async, type-safe |
 | **DB Driver** | asyncpg | 3x faster than psycopg2 |
 | **Data Processing** | Polars | 10-100x faster than Pandas |
-| **Cache** | Redis | In-memory, < 1ms latency |
 | **Database** | PostgreSQL 15 | Robust, feature-rich |
+| **Client Cache** | TanStack Query | Client-side caching |
 | **Deploy** | Railway/Render | Easy, free tier |
 
 ---
