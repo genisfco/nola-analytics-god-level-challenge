@@ -49,9 +49,10 @@ export function AdvancedFilters({ onApply, initialFilters }: AdvancedFiltersProp
   )
   const [channelId, setChannelId] = useState<number | undefined>(initialFilters?.channelId)
   
-  // Usar useRef para rastrear se já aplicamos os filtros iniciais
+  // Usar useRef para rastrear se já aplicamos os filtros iniciais e se é o primeiro render
   const hasAppliedInitialFilters = useRef(false)
   const previousInitialFilters = useRef<string>('')
+  const isFirstRender = useRef(true)
 
   // Criar uma chave única para comparar initialFilters
   const getFiltersKey = (filters?: ContextFilters) => {
@@ -106,23 +107,34 @@ export function AdvancedFilters({ onApply, initialFilters }: AdvancedFiltersProp
     }
   }, [initialFilters, onApply])
 
-  const handleApply = () => {
-    // Reset flag quando usuário aplicar manualmente
-    hasAppliedInitialFilters.current = false
-    previousInitialFilters.current = ''
-    
+  // Aplicar filtros automaticamente quando o estado local mudar
+  useEffect(() => {
+    // Não aplicar no primeiro render (componente montando sem filtros iniciais)
+    if (isFirstRender.current) {
+      isFirstRender.current = false
+      return
+    }
+
+    // Não aplicar se ainda estamos processando filtros iniciais
+    if (hasAppliedInitialFilters.current) {
+      return
+    }
+
+    // Aplicar automaticamente quando os filtros mudarem
     onApply({
       weekday,
       hourStart: hourRange?.start,
       hourEnd: hourRange?.end,
       channelId,
     })
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weekday, hourRange, channelId])
 
   const handleClear = () => {
-    // Reset flag quando usuário limpar
+    // Reset flags quando usuário limpar
     hasAppliedInitialFilters.current = false
     previousInitialFilters.current = ''
+    isFirstRender.current = false
     
     setWeekday(undefined)
     setHourRange(undefined)
@@ -149,7 +161,12 @@ export function AdvancedFilters({ onApply, initialFilters }: AdvancedFiltersProp
             </label>
             <select
               value={weekday ?? ''}
-              onChange={(e) => setWeekday(e.target.value ? Number(e.target.value) : undefined)}
+              onChange={(e) => {
+                const newWeekday = e.target.value ? Number(e.target.value) : undefined
+                setWeekday(newWeekday)
+                // Aplicar automaticamente quando muda
+                hasAppliedInitialFilters.current = false
+              }}
               className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-input"
             >
               <option value="">Todos os dias</option>
@@ -177,10 +194,13 @@ export function AdvancedFilters({ onApply, initialFilters }: AdvancedFiltersProp
               onChange={(e) => {
                 if (!e.target.value) {
                   setHourRange(undefined)
+                  hasAppliedInitialFilters.current = false
                   return
                 }
                 const [start, end] = e.target.value.split('-').map(Number)
                 setHourRange({ start, end })
+                // Aplicar automaticamente quando muda
+                hasAppliedInitialFilters.current = false
               }}
               className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-input"
             >
@@ -205,7 +225,12 @@ export function AdvancedFilters({ onApply, initialFilters }: AdvancedFiltersProp
             </label>
             <select
               value={channelId ?? ''}
-              onChange={(e) => setChannelId(e.target.value ? Number(e.target.value) : undefined)}
+              onChange={(e) => {
+                const newChannelId = e.target.value ? Number(e.target.value) : undefined
+                setChannelId(newChannelId)
+                // Aplicar automaticamente quando muda
+                hasAppliedInitialFilters.current = false
+              }}
               className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-input"
             >
               <option value="">Todos os canais</option>
@@ -218,23 +243,17 @@ export function AdvancedFilters({ onApply, initialFilters }: AdvancedFiltersProp
           </div>
         </div>
 
-        {/* Apply/Clear Buttons */}
+        {/* Clear Button */}
+        {hasFilters && (
         <div className="flex gap-2">
-          <button
-            onClick={handleApply}
-            className="flex-1 px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-md font-medium transition-colors"
-          >
-            Aplicar
-          </button>
-          {hasFilters && (
             <button
               onClick={handleClear}
-              className="px-4 py-2 bg-muted hover:bg-muted/80 text-muted-foreground rounded-md font-medium transition-colors"
+              className="w-full px-4 py-2 bg-muted hover:bg-muted/80 text-muted-foreground rounded-md font-medium transition-colors"
             >
-              Limpar
+              Limpar Filtros
             </button>
+          </div>
           )}
-        </div>
 
         {/* Active Filters Display */}
         {hasFilters && (

@@ -22,7 +22,7 @@ export function StoreFilter({ onApply, initialStores = [], layout = 'vertical' }
   const [storeOptions, setStoreOptions] = useState<Store[]>([])
   const [loading, setLoading] = useState(true)
 
-  /* // Sincronizar quando initialStores mudarem (ex: vindo de insight)
+  // Sincronizar quando initialStores mudarem (ex: vindo de insight)
   useEffect(() => {
     if (initialStores) {
       // Só atualiza se for diferente do estado atual
@@ -30,14 +30,12 @@ export function StoreFilter({ onApply, initialStores = [], layout = 'vertical' }
       const newIds = initialStores.sort().join(',')
       if (currentIds !== newIds) {
         setSelectedStores(initialStores)
-        // Aplicar automaticamente quando vier de insight (e não for array vazio)
-        if (initialStores.length > 0) {
-          onApply(initialStores)
-        }
+        // Aplicar automaticamente quando vier de insight
+        onApply(initialStores)
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialStores]) */
+  }, [initialStores])
 
   // Fetch stores when brand changes
   useEffect(() => {
@@ -63,23 +61,22 @@ export function StoreFilter({ onApply, initialStores = [], layout = 'vertical' }
 
   const handleStoreToggle = (storeId: number) => {
     setSelectedStores((prev) => {
-      if (prev.includes(storeId)) {
-        return prev.filter((id) => id !== storeId)
-      }
-      return [...prev, storeId]
+      const newStores = prev.includes(storeId)
+        ? prev.filter((id) => id !== storeId)
+        : [...prev, storeId]
+      // Aplicar automaticamente quando uma loja é selecionada/deselecionada
+      onApply(newStores)
+      return newStores
     })
   }
 
   const handleSelectAll = () => {
-    if (selectedStores.length === storeOptions.length) {
-      setSelectedStores([])
-    } else {
-      setSelectedStores(storeOptions.map((store) => store.id))
-    }
-  }
-
-  const handleApply = () => {
-    onApply(selectedStores)
+    const newStores = selectedStores.length === storeOptions.length
+      ? []
+      : storeOptions.map((store) => store.id)
+    setSelectedStores(newStores)
+    // Aplicar automaticamente quando seleciona/deseleciona todas
+    onApply(newStores)
   }
 
   const handleClear = () => {
@@ -151,23 +148,17 @@ export function StoreFilter({ onApply, initialStores = [], layout = 'vertical' }
           ))}
         </div>
 
-        {/* Apply/Clear Buttons */}
-        <div className="flex gap-2">
-          <button
-            onClick={handleApply}
-            className="flex-1 px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-md font-medium transition-colors"
-          >
-            Aplicar
-          </button>
-          {hasFilters && (
+        {/* Clear Button */}
+        {hasFilters && (
+          <div className="flex gap-2">
             <button
               onClick={handleClear}
-              className="px-4 py-2 bg-muted hover:bg-muted/80 text-muted-foreground rounded-md font-medium transition-colors"
+              className="w-full px-4 py-2 bg-muted hover:bg-muted/80 text-muted-foreground rounded-md font-medium transition-colors"
             >
-              Limpar
+              Limpar Filtros
             </button>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Active Filters Display */}
         {hasFilters && (

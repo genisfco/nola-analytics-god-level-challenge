@@ -133,12 +133,23 @@ function InsightCard({ insight, currentDateRange, onNavigateToDetail }: InsightC
     const hourStart = hour !== undefined ? hour : undefined
     const hourEnd = hour !== undefined ? hour + 1 : undefined
 
+    // Para insights de comparação de lojas, não filtrar por loja específica
+    // Assim o usuário pode comparar o desempenho entre todas as lojas
+    // Identificamos insights de comparação de lojas quando há only affected_stores
+    // sem affected_days, affected_hours ou affected_channels
+    const isStoreComparisonInsight = 
+      Boolean(insight.context.affected_stores && insight.context.affected_stores.length > 0) &&
+      !Boolean(insight.context.affected_days && insight.context.affected_days.length > 0) &&
+      !Boolean(insight.context.affected_hours && insight.context.affected_hours.length > 0) &&
+      !Boolean(insight.context.affected_channels && insight.context.affected_channels.length > 0)
+    const shouldIncludeStoreFilter = !isStoreComparisonInsight
+
     const context: InsightContext = {
       dateRange: {
         startDate: currentDateRange.startDate,
         endDate: currentDateRange.endDate
       },
-      storeIds: insight.context.affected_stores && insight.context.affected_stores.length > 0
+      storeIds: shouldIncludeStoreFilter && insight.context.affected_stores && insight.context.affected_stores.length > 0
         ? insight.context.affected_stores
         : undefined,
       contextFilters: {

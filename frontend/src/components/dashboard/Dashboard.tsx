@@ -119,7 +119,7 @@ export function Dashboard({ onNavigateToAdvanced }: DashboardProps) {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-8 items-stretch">
           {/* DateFilter */}
           <div className="lg:col-span-3 flex">
-            <div className="w-full">
+            <div className="w-full h-full">
               <DateFilter
                 startDate={dateRange.startDate}
                 endDate={dateRange.endDate}

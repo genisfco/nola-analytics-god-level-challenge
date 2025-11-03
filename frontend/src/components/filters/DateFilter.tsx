@@ -22,14 +22,10 @@ export function DateFilter({ startDate, endDate, onChange }: DateFilterProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startDate, endDate])
 
-  const handleApply = () => {
-    onChange(localStart, localEnd)
-  }
-
   const quickRanges = [
     { label: 'Últimos 15 dias', days: 15 },
     { label: 'Últimos 30 dias', days: 30 },
-    { label: 'Últimos 90 dias', days: 90 },
+    { label: 'Últimos 90 dias', days: 90 },    
   ]
 
   const applyQuickRange = (days: number) => {
@@ -45,8 +41,18 @@ export function DateFilter({ startDate, endDate, onChange }: DateFilterProps) {
     onChange(startStr, endStr)
   }
 
+  const handleDateChange = (type: 'start' | 'end', value: string) => {
+    if (type === 'start') {
+      setLocalStart(value)
+      onChange(value, localEnd)
+    } else {
+      setLocalEnd(value)
+      onChange(localStart, value)
+    }
+  }
+
   return (
-    <div className="bg-card rounded-lg shadow-sm border border-border p-4">
+    <div className="bg-card rounded-lg shadow-sm border border-border p-4 h-full flex flex-col">
       <div className="flex items-center gap-2 mb-3">
         <Calendar className="w-4 h-4 text-primary" />
         <h3 className="font-semibold text-card-foreground">Período</h3>
@@ -64,6 +70,9 @@ export function DateFilter({ startDate, endDate, onChange }: DateFilterProps) {
         ))}
       </div>
 
+      {/* Espaço flexível para empurrar campos de data para baixo */}
+      <div className="flex-1"></div>
+
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-xs font-medium text-muted-foreground mb-1">
@@ -72,7 +81,7 @@ export function DateFilter({ startDate, endDate, onChange }: DateFilterProps) {
           <input
             type="date"
             value={localStart}
-            onChange={(e) => setLocalStart(e.target.value)}
+            onChange={(e) => handleDateChange('start', e.target.value)}
             className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
           />
         </div>
@@ -83,18 +92,11 @@ export function DateFilter({ startDate, endDate, onChange }: DateFilterProps) {
           <input
             type="date"
             value={localEnd}
-            onChange={(e) => setLocalEnd(e.target.value)}
+            onChange={(e) => handleDateChange('end', e.target.value)}
             className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
           />
         </div>
       </div>
-
-      <button
-        onClick={handleApply}
-        className="w-full mt-3 px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-md font-medium transition-colors"
-      >
-        Aplicar Filtro
-      </button>
     </div>
   )
 }
