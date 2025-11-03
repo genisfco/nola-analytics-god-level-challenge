@@ -118,8 +118,6 @@ export function StorePerformanceComparison({
     state: store.state || '-',
   }))
 
-  const maxRevenue = Math.max(...chartData.map(d => d.revenue))
-
   return (
     <div className="bg-card rounded-lg shadow-sm border border-border p-6">
       <div className="flex items-center justify-between mb-6">
@@ -158,7 +156,7 @@ export function StorePerformanceComparison({
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                 <XAxis 
                   type="number" 
-                  tickFormatter={(value) => formatCurrency(value, 0)}
+                  tickFormatter={(value) => formatCurrency(value)}
                   stroke="#6b7280"
                   fontSize={12}
                 />
