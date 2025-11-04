@@ -191,17 +191,6 @@ npm test
 
 ---
 
-## 📊 Performance Targets
-
-| Métrica | Target | Estratégia |
-|---------|--------|-----------|
-| API Response (P95) | < 500ms | Índices PostgreSQL + otimização de queries |
-| Dashboard Load | < 2s | Parallel requests + TanStack Query cache |
-| Chart Render | < 100ms | React.memo + Recharts |
-
-**Resultados atuais:** Ver [docs/PERFORMANCE.md](./docs/PERFORMANCE.md)
-
----
 
 ## 📖 Documentação
 
@@ -233,12 +222,6 @@ npm test
 - ⏳ Tabelas interativas
 - ⏳ Export de relatórios
 
-### Futuro (v2.0)
-- ⏳ Analytics customizável (drag-and-drop)
-- ⏳ Comparações temporais
-- ⏳ Alertas automáticos
-- ⏳ Insights com IA
-
 ---
 
 ## 🚢 Deploy
@@ -255,10 +238,6 @@ docker compose up -d
 2. Conecte no Railway
 3. Deploy automático
 
-### Opção 3: Render
-
-Ver [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md)
-
 ---
 
 ## 🤝 Contribuindo
@@ -267,18 +246,13 @@ Este é um projeto individual para o Nola God Level Challenge, mas sugestões s�
 
 ---
 
-## 📝 License
-
-MIT License - ver [LICENSE](./LICENSE)
-
----
 
 ## 👤 Autor
 
 **Genis Ferreira**
 
-- GitHub: [@SEU-USUARIO](https://github.com/SEU-USUARIO)
-- Email: seu-email@example.com
+- GitHub: [@SEU-USUARIO](https://github.com/genisfco)
+- Email: genis_carvalho@hotmailcom
 
 ---
 
@@ -289,4 +263,4 @@ MIT License - ver [LICENSE](./LICENSE)
 
 ---
 
-**Desenvolvido com ❤️ para o Nola God Level Challenge • 2025**
+**Desenvolvido para o Nola God Level Challenge • 2025**
