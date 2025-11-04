@@ -42,7 +42,10 @@ export function StoreFilter({ onApply, initialStores = [], layout = 'vertical' }
   // Fetch stores when brand changes
   useEffect(() => {
     const fetchStores = async () => {
-      if (!brandId) return
+      if (!brandId) {
+        setLoading(false)
+        return
+      }
       
       setLoading(true)
       try {
@@ -50,13 +53,15 @@ export function StoreFilter({ onApply, initialStores = [], layout = 'vertical' }
         setStoreOptions(data.stores)
       } catch (error) {
         console.error('Error fetching stores:', error)
+        setStoreOptions([]) // Limpar lojas em caso de erro
       } finally {
         setLoading(false)
       }
     }
 
     fetchStores()
-  }, [brandId, fetchApi])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [brandId]) // fetchApi é memoizado, não precisa estar nas dependências
 
   const handleStoreToggle = (storeId: number) => {
     setSelectedStores((prev) => {

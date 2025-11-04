@@ -1,4 +1,5 @@
 import { useBrand } from '../contexts/BrandContext'
+import { useCallback } from 'react'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL 
   ? `${import.meta.env.VITE_API_URL}/api/v1/analytics`
@@ -22,7 +23,7 @@ export function useApi(): UseApiReturn {
   /**
    * Constrói a URL com os parâmetros, incluindo automaticamente o brand_id
    */
-  const buildUrl = (endpoint: string, params?: Record<string, any>): string => {
+  const buildUrl = useCallback((endpoint: string, params?: Record<string, any>): string => {
     const searchParams = new URLSearchParams()
     
     // Adiciona brand_id automaticamente se existir
@@ -48,25 +49,30 @@ export function useApi(): UseApiReturn {
     
     const queryString = searchParams.toString()
     return `${API_BASE_URL}${endpoint}${queryString ? '?' + queryString : ''}`
-  }
+  }, [brandId])
 
   /**
    * Faz uma requisição GET à API
    */
-  const fetchApi = async <T>(
+  const fetchApi = useCallback(async <T>(
     endpoint: string,
     params?: Record<string, any>
   ): Promise<T> => {
     const url = buildUrl(endpoint, params)
     
-    const response = await fetch(url)
-    
-    if (!response.ok) {
-      throw new Error(`API Error: ${response.status} ${response.statusText}`)
+    try {
+      const response = await fetch(url)
+      
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status} ${response.statusText}`)
+      }
+      
+      return response.json()
+    } catch (error) {
+      // Re-throw para que o componente possa tratar
+      throw error
     }
-    
-    return response.json()
-  }
+  }, [buildUrl])
 
   return {
     buildUrl,
