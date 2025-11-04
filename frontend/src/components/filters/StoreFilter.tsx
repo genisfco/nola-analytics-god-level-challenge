@@ -1,6 +1,7 @@
 import { Store as StoreIcon } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useBrand } from '../../contexts/BrandContext'
+import { useApi } from '../../hooks/useApi'
 
 interface Store {
   id: number
@@ -18,6 +19,7 @@ interface StoreFilterProps {
 
 export function StoreFilter({ onApply, initialStores = [], layout = 'vertical' }: StoreFilterProps) {
   const { brandId } = useBrand()
+  const { fetchApi } = useApi()
   const [selectedStores, setSelectedStores] = useState<number[]>(initialStores)
   const [storeOptions, setStoreOptions] = useState<Store[]>([])
   const [loading, setLoading] = useState(true)
@@ -44,10 +46,7 @@ export function StoreFilter({ onApply, initialStores = [], layout = 'vertical' }
       
       setLoading(true)
       try {
-        const response = await fetch(
-          `/api/v1/analytics/stores/list?brand_id=${brandId}`
-        )
-        const data = await response.json()
+        const data = await fetchApi<{ stores: Store[] }>('/stores/list', {})
         setStoreOptions(data.stores)
       } catch (error) {
         console.error('Error fetching stores:', error)
@@ -57,7 +56,7 @@ export function StoreFilter({ onApply, initialStores = [], layout = 'vertical' }
     }
 
     fetchStores()
-  }, [brandId])
+  }, [brandId, fetchApi])
 
   const handleStoreToggle = (storeId: number) => {
     setSelectedStores((prev) => {
