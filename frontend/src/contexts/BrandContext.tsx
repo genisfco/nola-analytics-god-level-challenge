@@ -32,7 +32,8 @@ export function BrandProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const fetchBrands = async () => {
       try {
-        const response = await fetch('/api/v1/analytics/brands/list')
+        const apiUrl = import.meta.env.VITE_API_URL || ''
+        const response = await fetch(`${apiUrl}/api/v1/analytics/brands/list`)
         const data = await response.json()
         setBrands(data.brands)
         

@@ -1,6 +1,8 @@
 import { useBrand } from '../contexts/BrandContext'
 
-const API_BASE_URL = '/api/v1/analytics'
+const API_BASE_URL = import.meta.env.VITE_API_URL 
+  ? `${import.meta.env.VITE_API_URL}/api/v1/analytics`
+  : '/api/v1/analytics'
 
 interface UseApiReturn {
   buildUrl: (endpoint: string, params?: Record<string, any>) => string
